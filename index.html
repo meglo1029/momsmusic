@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Music Taste Analysis</title>
+<title>For Teresa</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -60,14 +60,24 @@
     line-height: 1.05;
     font-weight: 400;
   }
-  header h1 em {
-    font-style: italic;
-    color: var(--accent);
-  }
-  header p {
+header p {
     margin-top: 0.75rem;
     color: var(--muted);
     font-size: 0.95rem;
+    font-family: 'DM Mono', monospace;
+  }
+  .memorial-text {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: #aaa;
+    max-width: 680px;
+    line-height: 1.7;
+    margin-top: 0.75rem;
+  }
+  .stats-line {
+    margin-top: 1.25rem;
+    color: var(--muted);
+    font-size: 0.85rem;
     font-family: 'DM Mono', monospace;
   }
   .header-stats {
@@ -83,7 +93,7 @@
   }
   .hstat-num {
     font-family: 'DM Serif Display', serif;
-    font-size: 2rem;
+    font-size: clamp(1rem, 2vw, 1.6rem);
     color: var(--accent);
     line-height: 1;
   }
@@ -240,7 +250,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
   }
-  @media (max-width: 800px) { .features-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) { .features-grid { grid-template-columns: 1fr; } }
 
   /* FEATURE BARS */
   .feature-bars { display: flex; flex-direction: column; gap: 1rem; }
@@ -464,8 +474,9 @@
 
 <header>
   <div class="header-inner">
-    <h1>Music <em>Taste</em><br>Analysis</h1>
-    <p>43 playlists · 23,077 tracks · all of it, analyzed</p>
+    <h1>For <span>Teresa</span></h1>
+    <p class="memorial-text">Mom, you were a loving mother to four daughters who shared everything — especially music. You spent years carefully curating playlists for the people closest to you, from daughters and friends to great aunts and cousins, always knowing exactly what they'd love. You sang loudly, listened intently, and cruised with the windows down. This is how you lived your life through Spotify, from account creation in 2014 until your tragic and unexpected passing in 2025. We're still listening.</p>
+<p class="stats-line">43 playlists · 23,077 tracks · One mom</p>
     <div class="header-stats">
       <div class="hstat"><div class="hstat-num">43</div><div class="hstat-label">Playlists</div></div>
       <div class="hstat"><div class="hstat-num">23,077</div><div class="hstat-label">Total tracks</div></div>
