@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Taste Analysis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --accent: #c8f461;
+    --accent2: #ff6b6b;
+    --accent3: #6bcfff;
+    --accent4: #ffb86b;
+    --text: #f0f0f0;
+    --muted: #777;
+    --feature-energy: #ff6b6b;
+    --feature-valence: #ffb86b;
+    --feature-danceability: #c8f461;
+    --feature-acousticness: #6bcfff;
+    --feature-instrumentalness: #b86bff;
+    --feature-speechiness: #ff6bb8;
+    --feature-liveness: #6bffd4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  header {
+    padding: 3rem 2rem 2rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -80px; left: -80px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(200,244,97,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-inner { max-width: 1400px; margin: 0 auto; }
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    line-height: 1.05;
+    font-weight: 400;
+  }
+  header h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  header p {
+    margin-top: 0.75rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+    font-family: 'DM Mono', monospace;
+  }
+  .header-stats {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .hstat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .hstat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .hstat-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* MAIN LAYOUT */
+  .app { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+  /* SECTION TITLES */
+  .section-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem;
+    font-weight: 400;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text);
+  }
+  .section-title span {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    background: var(--surface2);
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.3rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 0.55rem 1.1rem;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); background: var(--surface2); }
+  .tab.active {
+    background: var(--accent);
+    color: #0d0d0d;
+    font-weight: 600;
+  }
+
+  /* PLAYLIST SELECTOR */
+  .playlist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+  .pl-chip {
+    padding: 0.55rem 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .pl-chip:hover { border-color: var(--accent); color: var(--text); }
+  .pl-chip.selected {
+    background: rgba(200,244,97,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .pl-chip .track-count {
+    margin-left: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .pl-chip.selected .track-count { color: rgba(200,244,97,0.6); }
+
+  .select-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .select-btn {
+    padding: 0.35rem 0.8rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    transition: all 0.15s;
+  }
+  .select-btn:hover { color: var(--text); border-color: var(--accent); }
+  .compare-info {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+  .card-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  /* FEATURE RADAR SECTION */
+  .features-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 800px) { .features-grid { grid-template-columns: 1fr; } }
+
+  /* FEATURE BARS */
+  .feature-bars { display: flex; flex-direction: column; gap: 1rem; }
+  .feature-row { display: flex; flex-direction: column; gap: 0.4rem; }
+  .feature-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+  }
+  .feature-name { color: var(--text); font-weight: 500; }
+  .feature-vals { display: flex; gap: 0.75rem; font-family: 'DM Mono', monospace; font-size: 0.72rem; }
+  .fval { color: var(--muted); display: flex; align-items: center; gap: 0.3rem; }
+  .fval .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .feature-bar-track {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 99px;
+    position: relative;
+    overflow: visible;
+  }
+  .feature-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    position: absolute;
+    top: 0; left: 0;
+    transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* TEMPO special */
+  .feature-tempo .feature-bar-track { background: var(--surface2); }
+
+  /* GENRE SECTION */
+  .genre-section { margin-top: 2rem; }
+  .genre-compare-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+  }
+  .genre-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .genre-row { display: flex; align-items: center; gap: 0.75rem; font-size: 0.82rem; }
+  .genre-name { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .genre-bar-wrap { flex: 2; height: 5px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .genre-bar { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+  .genre-count { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  /* ARTISTS SECTION */
+  .artists-compare-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+  }
+  .artist-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .artist-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    transition: background 0.15s;
+  }
+  .artist-row:hover { background: var(--surface2); }
+  .artist-rank {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    min-width: 18px;
+  }
+  .artist-name { flex: 1; color: var(--text); font-weight: 500; }
+  .artist-count { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); }
+
+  /* TOP TRACKS */
+  .tracks-compare-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.25rem;
+  }
+  .track-list { display: flex; flex-direction: column; gap: 0.3rem; }
+  .track-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 6px;
+    transition: background 0.15s;
+  }
+  .track-row:hover { background: var(--surface2); }
+  .track-name { font-size: 0.82rem; font-weight: 500; color: var(--text); }
+  .track-artist { font-size: 0.72rem; color: var(--muted); }
+  .track-pop {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+    margin-top: 0.1rem;
+  }
+
+  /* EXPLICIT */
+  .explicit-badge {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    background: rgba(255,107,107,0.15);
+    color: var(--accent2);
+    border: 1px solid rgba(255,107,107,0.3);
+    margin-left: 0.4rem;
+  }
+
+  /* OVERVIEW SECTION */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .overview-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .overview-card:hover {
+    border-color: var(--accent);
+    background: rgba(200,244,97,0.03);
+    transform: translateY(-1px);
+  }
+  .oc-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .oc-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .oc-bars { display: flex; flex-direction: column; gap: 0.35rem; }
+  .oc-bar-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; }
+  .oc-bar-label { color: var(--muted); width: 60px; flex-shrink: 0; font-family: 'DM Mono', monospace; font-size: 0.62rem; }
+  .oc-bar-track { flex: 1; height: 4px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .oc-bar-fill { height: 100%; border-radius: 99px; }
+
+  /* CHART CONTAINERS */
+  .chart-wrap { position: relative; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+  }
+
+  /* SECTION PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* PLAYLIST CARD HEADER */
+  .pl-card-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .pl-card-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+  }
+  .pl-card-tracks { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); }
+
+  /* TEMPO DISPLAY */
+  .tempo-display {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    color: var(--accent4);
+    line-height: 1;
+    margin-bottom: 0.2rem;
+  }
+  .tempo-label { font-size: 0.7rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .app { padding: 1rem; }
+    .tabs { gap: 0.15rem; }
+    .tab { padding: 0.45rem 0.8rem; font-size: 0.8rem; }
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* GLOBAL GENRE/ARTIST CROSS-PLAYLIST */
+  .global-section { margin-top: 2rem; }
+  .global-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 700px) { .global-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <h1>Music <em>Taste</em><br>Analysis</h1>
+    <p>43 playlists · 23,077 tracks · all of it, analyzed</p>
+    <div class="header-stats">
+      <div class="hstat"><div class="hstat-num">43</div><div class="hstat-label">Playlists</div></div>
+      <div class="hstat"><div class="hstat-num">23,077</div><div class="hstat-label">Total tracks</div></div>
+      <div class="hstat"><div class="hstat-num" id="top-artist-name">—</div><div class="hstat-label">Top artist overall</div></div>
+      <div class="hstat"><div class="hstat-num" id="top-genre-name">—</div><div class="hstat-label">Top genre overall</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+  <div class="tabs">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="features">Audio Features</button>
+    <button class="tab" data-tab="genres">Genres</button>
+    <button class="tab" data-tab="artists">Artists</button>
+    <button class="tab" data-tab="tracks">Top Tracks</button>
+    <button class="tab" data-tab="compare">Compare</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="panel active" id="panel-overview">
+    <div class="section-title">All Playlists <span>click to explore</span></div>
+    <div class="overview-grid" id="overview-grid"></div>
+  </div>
+
+  <!-- AUDIO FEATURES -->
+  <div class="panel" id="panel-features">
+    <div class="section-title">Audio Features <span>select playlists below</span></div>
+    <div class="select-controls">
+      <button class="select-btn" id="feat-select-all">Select all</button>
+      <button class="select-btn" id="feat-clear">Clear</button>
+      <span class="compare-info" id="feat-count">0 playlists selected</span>
+    </div>
+    <div class="playlist-grid" id="feat-playlist-grid"></div>
+    <div id="feat-content"></div>
+  </div>
+
+  <!-- GENRES -->
+  <div class="panel" id="panel-genres">
+    <div class="section-title">Genre Breakdown <span>select playlists below</span></div>
+    <div class="select-controls">
+      <button class="select-btn" id="genre-select-all">Select all</button>
+      <button class="select-btn" id="genre-clear">Clear</button>
+      <span class="compare-info" id="genre-count">0 playlists selected</span>
+    </div>
+    <div class="playlist-grid" id="genre-playlist-grid"></div>
+    <div class="global-section">
+      <div class="global-grid">
+        <div class="card">
+          <div class="card-title">Top genres — combined selection</div>
+          <div class="genre-list" id="global-genre-list"></div>
+        </div>
+        <div class="card chart-wrap" style="height:340px;">
+          <div class="card-title">Genre distribution</div>
+          <canvas id="genre-chart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="genre-compare-grid" id="genre-compare-grid" style="margin-top:1.5rem;"></div>
+  </div>
+
+  <!-- ARTISTS -->
+  <div class="panel" id="panel-artists">
+    <div class="section-title">Artists <span>select playlists below</span></div>
+    <div class="select-controls">
+      <button class="select-btn" id="artist-select-all">Select all</button>
+      <button class="select-btn" id="artist-clear">Clear</button>
+      <span class="compare-info" id="artist-count">0 playlists selected</span>
+    </div>
+    <div class="playlist-grid" id="artist-playlist-grid"></div>
+    <div class="global-section">
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-title">Top artists — combined selection</div>
+        <div class="artist-list" id="global-artist-list"></div>
+      </div>
+    </div>
+    <div class="artists-compare-grid" id="artists-compare-grid"></div>
+  </div>
+
+  <!-- TOP TRACKS -->
+  <div class="panel" id="panel-tracks">
+    <div class="section-title">Top Tracks <span>by popularity</span></div>
+    <div class="select-controls">
+      <button class="select-btn" id="track-select-all">Select all</button>
+      <button class="select-btn" id="track-clear">Clear</button>
+      <span class="compare-info" id="track-count">0 playlists selected</span>
+    </div>
+    <div class="playlist-grid" id="track-playlist-grid"></div>
+    <div class="tracks-compare-grid" id="tracks-compare-grid" style="margin-top:1.5rem;"></div>
+  </div>
+
+  <!-- COMPARE -->
+  <div class="panel" id="panel-compare">
+    <div class="section-title">Compare Playlists <span>pick 2–6</span></div>
+    <div class="select-controls">
+      <button class="select-btn" id="cmp-clear">Clear</button>
+      <span class="compare-info" id="cmp-count">0 playlists selected</span>
+    </div>
+    <div class="playlist-grid" id="cmp-playlist-grid"></div>
+    <div id="cmp-content" style="margin-top:1.5rem;"></div>
+  </div>
+</div>
+
+<script>
+const DATA = {"31st Birthday MEGS Oct 29 2022":{"track_count":883,"audio_features":{"Danceability":0.581,"Energy":0.6271,"Valence":0.4996,"Acousticness":0.271,"Instrumentalness":0.0348,"Speechiness":0.0558,"Liveness":0.1672,"Tempo":122.2339},"top_artists":{"Taylor Swift":24,"Post Malone":20,"Billie Eilish":13,"The Japanese House":12,"Winnetka Bowling League":11,"Steely Dan":11,"blink-182":10,"Miley Cyrus":10,"Nessa Barrett":10,"Justin Bieber":9},"top_tracks":[{"Track Name":"Every Breath You Take","Artist Name(s)":"The Police","Popularity":94},{"Track Name":"Creep","Artist Name(s)":"Radiohead","Popularity":93},{"Track Name":"Mr. Brightside","Artist Name(s)":"The Killers","Popularity":93},{"Track Name":"Sweater Weather","Artist Name(s)":"The Neighbourhood","Popularity":93},{"Track Name":"As It Was","Artist Name(s)":"Harry Styles","Popularity":92},{"Track Name":"Sparks","Artist Name(s)":"Coldplay","Popularity":91},{"Track Name":"Feel Good Inc.","Artist Name(s)":"Gorillaz;De La Soul","Popularity":91},{"Track Name":"Blinding Lights","Artist Name(s)":"The Weeknd","Popularity":90},{"Track Name":"Love Yourself","Artist Name(s)":"Justin Bieber","Popularity":90},{"Track Name":"Promiscuous","Artist Name(s)":"Nelly Furtado;Timbaland","Popularity":89}],"top_genres":{"classic rock":41,"pop punk":41,"emo":37,"rock":36,"indie":28,"new wave":25,"country":23,"yacht rock":22,"alternative rock":21,"punk":20,"indie rock":17,"pop":16,"soft pop":16,"soul":15,"soft rock":15},"explicit_pct":13.1,"tempo_distribution":{"110-130":254,"90-110":197,"130-150":166,"150+":151,"70-90":103,"<70":12}},"70s 80s Fun Times Disco etc":{"track_count":63,"audio_features":{"Danceability":0.6963,"Energy":0.6965,"Valence":0.7685,"Acousticness":0.1639,"Instrumentalness":0.0501,"Speechiness":0.0468,"Liveness":0.1962,"Tempo":122.1149},"top_artists":{"Yazoo":10,"Kool & The Gang":8,"Donna Summer":8,"ABBA":7,"KC & The Sunshine Band":5,"Eddie Money":5,"Shalamar":3,"Anita Ward":2,"Dazz Band":2,"Loverboy":2},"top_tracks":[{"Track Name":"Highway to Hell","Artist Name(s)":"AC/DC","Popularity":89},{"Track Name":"Back In Black","Artist Name(s)":"AC/DC","Popularity":87},{"Track Name":"Play That Funky Music","Artist Name(s)":"Wild Cherry","Popularity":76},{"Track Name":"That's the Way (I Like It) - 2004 Remaster","Artist Name(s)":"KC & The Sunshine Band","Popularity":69},{"Track Name":"SOS","Artist Name(s)":"ABBA","Popularity":67},{"Track Name":"Girls Just Want to Have Fun","Artist Name(s)":"Cyndi Lauper","Popularity":66},{"Track Name":"She Works Hard For The Money","Artist Name(s)":"Donna Summer","Popularity":64},{"Track Name":"Two Tickets to Paradise (2022 Remaster)","Artist Name(s)":"Eddie Money","Popularity":64},{"Track Name":"Only You","Artist Name(s)":"Yazoo","Popularity":63},{"Track Name":"Knowing Me, Knowing You","Artist Name(s)":"ABBA","Popularity":61}],"top_genres":{"disco":26,"synthpop":11,"new wave":11,"funk":10,"hi-nrg":9,"classic rock":9,"post-disco":5,"rock":2,"hard rock":2,"rock and roll":2,"motown":1,"classic soul":1,"soul":1,"northern soul":1,"quiet storm":1},"explicit_pct":0.0,"tempo_distribution":{"110-130":37,"90-110":13,"130-150":10,"150+":3,"<70":0,"70-90":0}},"Alive":{"track_count":661,"audio_features":{"Danceability":0.5649,"Energy":0.644,"Valence":0.5086,"Acousticness":0.2396,"Instrumentalness":0.0394,"Speechiness":0.0573,"Liveness":0.1829,"Tempo":121.4166},"top_artists":{"Bob Seger":35,"Angus & Julia Stone":11,"Rush":9,"Kelly Clarkson":7,"Boy & Bear":7,"Kings of Leon":6,"Nothing But Thieves":6,"Chris Stapleton":6,"KC & The Sunshine Band":6,"Young the Giant":6},"top_tracks":[{"Track Name":"Baby","Artist Name(s)":"Justin Bieber;Ludacris","Popularity":90},{"Track Name":"Perfect","Artist Name(s)":"Ed Sheeran","Popularity":90},{"Track Name":"Africa","Artist Name(s)":"TOTO","Popularity":90},{"Track Name":"Highway to Hell","Artist Name(s)":"AC/DC","Popularity":89},{"Track Name":"The Scientist","Artist Name(s)":"Coldplay","Popularity":89},{"Track Name":"Closer","Artist Name(s)":"The Chainsmokers;Halsey","Popularity":89},{"Track Name":"Sex on Fire","Artist Name(s)":"Kings of Leon","Popularity":88},{"Track Name":"Yeah! (feat. Lil Jon & Ludacris)","Artist Name(s)":"USHER;Lil Jon;Ludacris","Popularity":88},{"Track Name":"Back In Black","Artist Name(s)":"AC/DC","Popularity":87},{"Track Name":"What Do You Mean?","Artist Name(s)":"Justin Bieber","Popularity":87}],"top_genres":{"classic rock":117,"rock":55,"country":49,"hard rock":30,"yacht rock":23,"classic country":22,"soft rock":18,"indie":18,"indie folk":18,"aor":18,"southern rock":17,"alternative rock":16,"new wave":15,"christmas":14,"indie rock":14},"explicit_pct":5.6,"tempo_distribution":{"110-130":176,"90-110":154,"130-150":127,"150+":109,"70-90":89,"<70":6}},"BRITTANY":{"track_count":660,"audio_features":{"Danceability":0.6025,"Energy":0.6068,"Valence":0.4746,"Acousticness":0.2893,"Instrumentalness":0.0068,"Speechiness":0.061,"Liveness":0.1646,"Tempo":120.4711},"top_artists":{"Taylor Swift":26,"Post Malone":21,"Ed Sheeran":13,"Niall Horan":12,"Halsey":11,"Keith Urban":11,"Khalid":11,"Dua Lipa":10,"Julia Michaels":10,"Tim McGraw":9},"top_tracks":[{"Track Name":"BIRDS OF A FEATHER","Artist Name(s)":"Billie Eilish","Popularity":95},{"Track Name":"Mr. Brightside","Artist Name(s)":"The Killers","Popularity":93},{"Track Name":"Creep","Artist Name(s)":"Radiohead","Popularity":93},{"Track Name":"Sign of the Times","Artist Name(s)":"Harry Styles","Popularity":92},{"Track Name":"As It Was","Artist Name(s)":"Harry Styles","Popularity":92},{"Track Name":"That\u2019s So True","Artist Name(s)":"Gracie Abrams","Popularity":91},{"Track Name":"Blinding Lights","Artist Name(s)":"The Weeknd","Popularity":90},{"Track Name":"Love Yourself","Artist Name(s)":"Justin Bieber","Popularity":90},{"Track Name":"The Scientist","Artist Name(s)":"Coldplay","Popularity":89},{"Track Name":"Closer","Artist Name(s)":"The Chainsmokers;Halsey","Popularity":89}],"top_genres":{"country":99,"soft pop":35,"pop":22,"pop punk":18,"emo":16,"classic country":14,"pop country":14,"folk rock":13,"acoustic country":12,"punk":12,"r&b":11,"christian":11,"singer-songwriter":10,"ccm":10,"rock":10},"explicit_pct":17.9,"tempo_distribution":{"110-130":165,"90-110":155,"150+":116,"130-150":113,"70-90":102,"<70":8}},"Bob":{"track_count":316,"audio_features":{"Danceability":0.5762,"Energy":0.6264,"Valence":0.571,"Acousticness":0.256,"Instrumentalness":0.023,"Speechiness":0.0464,"Liveness":0.1864,"Tempo":119.8459},"top_artists":{"Fleetwood Mac":15,"Bob Seger":15,"Steve Miller Band":10,"Keith Urban":7,"Paul Simon":6,"Brooks & Dunn":6,"Little River Band":5,"Vance Joy":5,"Jason Aldean":5,"Little Big Town":5},"top_tracks":[{"Track Name":"Dreams - 2004 Remaster","Artist Name(s)":"Fleetwood Mac","Popularity":93},{"Track Name":"Yellow","Artist Name(s)":"Coldplay","Popularity":92},{"Track Name":"Closer","Artist Name(s)":"The Chainsmokers;Halsey","Popularity":89},{"Track Name":"Everlong","Artist Name(s)":"Foo Fighters","Popularity":88},{"Track Name":"Treat You Better","Artist Name(s)":"Shawn Mendes","Popularity":88},{"Track Name":"Everywhere - 2017 Remaster","Artist Name(s)":"Fleetwood Mac","Popularity":88},{"Track Name":"Landslide","Artist Name(s)":"Fleetwood Mac","Popularity":87},{"Track Name":"I Wanna Dance with Somebody (Who Loves Me)","Artist Name(s)":"Whitney Houston","Popularity":86},{"Track Name":"Island In The Sun","Artist Name(s)":"Weezer","Popularity":85},{"Track Name":"You Get What You Give","Artist Name(s)":"New Radicals","Popularity":84}],"top_genres":{"country":85,"classic rock":73,"yacht rock":47,"soft rock":45,"acoustic country":27,"classic country":23,"christmas":14,"country rock":14,"southern rock":13,"adult standards":11,"big band":10,"swing music":10,"singer-songwriter":10,"vocal jazz":9,"aor":9},"explicit_pct":0.0,"tempo_distribution":{"110-130":96,"90-110":82,"130-150":57,"150+":40,"70-90":39,"<70":2}},"CHILL":{"track_count":122,"audio_features":{"Danceability":0.567,"Energy":0.56,"Valence":0.4891,"Acousticness":0.3172,"Instrumentalness":0.0275,"Speechiness":0.0389,"Liveness":0.1444,"Tempo":121.1764},"top_artists":{"Angus & Julia Stone":10,"Jelly Roll":6,"Maroon 5":5,"Rascal Flatts":5,"Fleetwood Mac":4,"Patsy Cline":4,"Noah Kahan":3,"Lady A":3,"Zach Bryan":3,"Eagles":3},"top_tracks":[{"Track Name":"BIRDS OF A FEATHER","Artist Name(s)":"Billie Eilish","Popularity":95},{"Track Name":"The Less I Know The Better","Artist Name(s)":"Tame Impala","Popularity":91},{"Track Name":"Numb","Artist Name(s)":"Linkin Park","Popularity":90},{"Track Name":"Californication","Artist Name(s)":"Red Hot Chili Peppers","Popularity":88},{"Track Name":"Pink Skies","Artist Name(s)":"Zach Bryan","Popularity":86},{"Track Name":"Save Your Tears (Remix) (with Ariana Grande) - Bonus Track","Artist Name(s)":"The Weeknd;Ariana Grande","Popularity":85},{"Track Name":"Maneater","Artist Name(s)":"Daryl Hall & John Oates","Popularity":85},{"Track Name":"Silver Springs - 2004 Remaster","Artist Name(s)":"Fleetwood Mac","Popularity":84},{"Track Name":"Fast Car","Artist Name(s)":"Luke Combs","Popularity":84},{"Track Name":"Fortnight (feat. Post Malone)","Artist Name(s)":"Taylor Swift;Post Malone","Popularity":83}],"top_genres":{"country":38,"yacht rock":13,"classic rock":13,"soft rock":12,"classic country":8,"pop":7,"country hip hop":6,"rock":5,"pop country":4,"post-grunge":4,"acoustic country":4,"alternative rock":3,"new wave":3,"red dirt":3,"country christian":3},"explicit_pct":4.9,"tempo_distribution":{"90-110":33,"110-130":25,"130-150":23,"150+":22,"70-90":19,"<70":0}},"CHILLIN":{"track_count":273,"audio_features":{"Danceability":0.5568,"Energy":0.4357,"Valence":0.45,"Acousticness":0.4775,"Instrumentalness":0.0618,"Speechiness":0.055,"Liveness":0.1728,"Tempo":116.6852},"top_artists":{"The Beatles":11,"Simon & Garfunkel":10,"Bob Marley & The Wailers":9,"Coldplay":5,"Bobby McFerrin":5,"George Michael":5,"Mary J. Blige":4,"Gordon Lightfoot":4,"Elvis Costello":4,"UB40":3},"top_tracks":[{"Track Name":"Sparks","Artist Name(s)":"Coldplay","Popularity":91},{"Track Name":"When I Was Your Man","Artist Name(s)":"Bruno Mars","Popularity":90},{"Track Name":"Fix You","Artist Name(s)":"Coldplay","Popularity":87},{"Track Name":"Landslide","Artist Name(s)":"Fleetwood Mac","Popularity":87},{"Track Name":"A Horse with No Name","Artist Name(s)":"America;George Martin","Popularity":86},{"Track Name":"Piano Man","Artist Name(s)":"Billy Joel","Popularity":85},{"Track Name":"Family Affair","Artist Name(s)":"Mary J. Blige","Popularity":84},{"Track Name":"Take It Easy - 2013 Remaster","Artist Name(s)":"Eagles","Popularity":83},{"Track Name":"i love you","Artist Name(s)":"Billie Eilish","Popularity":83},{"Track Name":"American Pie","Artist Name(s)":"Don McLean","Popularity":82}],"top_genres":{"folk rock":35,"singer-songwriter":32,"folk":26,"classic rock":21,"reggae":17,"psychedelic rock":14,"roots reggae":12,"yacht rock":12,"indie folk":11,"rock":11,"soft rock":8,"folk pop":7,"power pop":7,"alternative rock":6,"indie":5},"explicit_pct":3.3,"tempo_distribution":{"110-130":70,"90-110":68,"130-150":45,"70-90":43,"150+":37,"<70":10}},"CHRISTMAS SONGS":{"track_count":177,"audio_features":{"Danceability":0.5085,"Energy":0.5371,"Valence":0.5079,"Acousticness":0.4441,"Instrumentalness":0.0162,"Speechiness":0.047,"Liveness":0.2064,"Tempo":121.332},"top_artists":{"Elvis Presley":13,"Lindsey Stirling":7,"Michael Bubl\u00e9":6,"Gwen Stefani":6,"Kelly Clarkson":4,"Wham!":3,"*NSYNC":3,"Mariah Carey":2,"Frank Sinatra":2,"Andy Williams":2},"top_tracks":[{"Track Name":"Only Wanna Be With You","Artist Name(s)":"Hootie & The Blowfish","Popularity":75},{"Track Name":"All I Want for Christmas Is You","Artist Name(s)":"Mariah Carey","Popularity":72},{"Track Name":"Carol Of The Bells","Artist Name(s)":"Lindsey Stirling","Popularity":67},{"Track Name":"Underneath the Tree","Artist Name(s)":"Kelly Clarkson","Popularity":62},{"Track Name":"It's the Most Wonderful Time of the Year","Artist Name(s)":"Andy Williams","Popularity":61},{"Track Name":"Within","Artist Name(s)":"Daft Punk","Popularity":59},{"Track Name":"Are You Happy Now?","Artist Name(s)":"Michelle Branch","Popularity":58},{"Track Name":"Christmas Lights","Artist Name(s)":"Coldplay","Popularity":58},{"Track Name":"Blue Christmas","Artist Name(s)":"Elvis Presley","Popularity":58},{"Track Name":"Feliz Navidad","Artist Name(s)":"Jos\u00e9 Feliciano","Popularity":57}],"top_genres":{"christmas":52,"rockabilly":14,"rock and roll":14,"adult standards":8,"country":8,"classical crossover":8,"soft pop":7,"pop":6,"jazz":5,"vocal jazz":5,"soul":5,"classic soul":5,"motown":5,"big band":4,"soft rock":4},"explicit_pct":0.0,"tempo_distribution":{"90-110":42,"130-150":38,"150+":33,"70-90":29,"110-130":29,"<70":6}},"Christmas Data":{"track_count":44,"audio_features":{"Danceability":0.4947,"Energy":0.4933,"Valence":0.513,"Acousticness":0.4479,"Instrumentalness":0.033,"Speechiness":0.0457,"Liveness":0.2208,"Tempo":119.5336},"top_artists":{"Bing Crosby":3,"Paul McCartney":2,"Mariah Carey":2,"Gene Autry":2,"Band Aid":1,"Vince Guaraldi Trio":1,"Brenda Lee":1,"Elvis Presley":1,"Charles Brown":1,"Pyotr Ilyich Tchaikovsky":1},"top_tracks":[{"Track Name":"Father Figure - Remastered","Artist Name(s)":"George Michael","Popularity":74},{"Track Name":"All You Wanted","Artist Name(s)":"Michelle Branch","Popularity":68},{"Track Name":"Runnin' Down A Dream","Artist Name(s)":"Tom Petty","Popularity":65},{"Track Name":"Let It Snow! Let It Snow! Let It Snow!","Artist Name(s)":"Dean Martin","Popularity":64},{"Track Name":"Blue Christmas","Artist Name(s)":"Elvis Presley","Popularity":58},{"Track Name":"My Body","Artist Name(s)":"Young the Giant","Popularity":56},{"Track Name":"Christmas (Baby Please Come Home)","Artist Name(s)":"Mariah Carey","Popularity":55},{"Track Name":"Santa Claus Is Comin' to Town - Live at C.W. Post College, Greenvale, NY - December 1975","Artist Name(s)":"Bruce Springsteen","Popularity":55},{"Track Name":"Here Comes Santa Claus (Right Down Santa Claus Lane) - 1947 Version","Artist Name(s)":"Gene Autry","Popularity":54},{"Track Name":"Christmas Time Is Here","Artist Name(s)":"Vince Guaraldi Trio","Popularity":53}],"top_genres":{"christmas":18,"rockabilly":2,"rock and roll":2,"glam rock":2,"motown":2,"adult standards":2,"country":2,"classic rock":2,"ballet":1,"classical":1,"orchestral":1,"choral":1,"art rock":1,"classic soul":1,"soul":1},"explicit_pct":0.0,"tempo_distribution":{"90-110":11,"150+":11,"110-130":8,"70-90":5,"130-150":5,"<70":4}},"Coloring Music":{"track_count":484,"audio_features":{"Danceability":0.5537,"Energy":0.646,"Valence":0.5484,"Acousticness":0.2358,"Instrumentalness":0.0476,"Speechiness":0.0536,"Liveness":0.1808,"Tempo":123.0809},"top_artists":{"The Rolling Stones":22,"Half Moon Run":13,"The Doobie Brothers":12,"The Doors":10,"Van Morrison":8,"Elton John":8,"Gin Blossoms":8,"Green Day":6,"Eminem":6,"JA\u0178-Z":6},"top_tracks":[{"Track Name":"In the End","Artist Name(s)":"Linkin Park","Popularity":91},{"Track Name":"Without Me","Artist Name(s)":"Eminem","Popularity":90},{"Track Name":"Love The Way You Lie","Artist Name(s)":"Eminem;Rihanna","Popularity":89},{"Track Name":"Passionfruit","Artist Name(s)":"Drake","Popularity":89},{"Track Name":"Highway to Hell","Artist Name(s)":"AC/DC","Popularity":89},{"Track Name":"Hotel California - 2013 Remaster","Artist Name(s)":"Eagles","Popularity":88},{"Track Name":"The Real Slim Shady","Artist Name(s)":"Eminem","Popularity":87},{"Track Name":"Till I Collapse","Artist Name(s)":"Eminem;Nate Dogg","Popularity":86},{"Track Name":"A Horse with No Name","Artist Name(s)":"America;George Martin","Popularity":86},{"Track Name":"Piano Man","Artist Name(s)":"Billy Joel","Popularity":85}],"top_genres":{"classic rock":139,"rock":62,"soft rock":49,"yacht rock":46,"southern rock":27,"aor":22,"indie folk":18,"country":17,"psychedelic rock":17,"folk pop":16,"rap":16,"hard rock":16,"folk rock":15,"folk":14,"indie":13},"explicit_pct":6.2,"tempo_distribution":{"110-130":134,"130-150":108,"90-110":102,"150+":76,"70-90":61,"<70":3}},"Country":{"track_count":105,"audio_features":{"Danceability":0.5625,"Energy":0.6309,"Valence":0.5109,"Acousticness":0.2764,"Instrumentalness":0.0101,"Speechiness":0.0394,"Liveness":0.1618,"Tempo":122.205},"top_artists":{"Zach Bryan":8,"Morgan Wallen":7,"Luke Combs":7,"Jason Aldean":6,"Johnny Cash":5,"Lady A":5,"Tim McGraw":4,"Chris Stapleton":4,"Rascal Flatts":3,"Carrie Underwood":3},"top_tracks":[{"Track Name":"Something in the Orange","Artist Name(s)":"Zach Bryan","Popularity":87},{"Track Name":"Pink Skies","Artist Name(s)":"Zach Bryan","Popularity":86},{"Track Name":"Last Night","Artist Name(s)":"Morgan Wallen","Popularity":85},{"Track Name":"Fast Car","Artist Name(s)":"Luke Combs","Popularity":84},{"Track Name":"Sugar","Artist Name(s)":"Maroon 5","Popularity":83},{"Track Name":"Lovely Day","Artist Name(s)":"Bill Withers","Popularity":82},{"Track Name":"Nine Ball","Artist Name(s)":"Zach Bryan","Popularity":82},{"Track Name":"I Had Some Help (Feat. Morgan Wallen)","Artist Name(s)":"Post Malone;Morgan Wallen","Popularity":82},{"Track Name":"Springsteen","Artist Name(s)":"Eric Church","Popularity":81},{"Track Name":"Burn, Burn, Burn","Artist Name(s)":"Zach Bryan","Popularity":81}],"top_genres":{"country":90,"classic country":18,"acoustic country":13,"outlaw country":10,"red dirt":8,"country rock":7,"pop country":7,"country christian":4,"country hip hop":3,"classic rock":3,"yacht rock":3,"soft rock":3,"christmas":2,"pop":2,"southern rock":2},"explicit_pct":7.6,"tempo_distribution":{"90-110":30,"150+":22,"130-150":19,"70-90":18,"110-130":16,"<70":0}},"Favorites at the Moment":{"track_count":2123,"audio_features":{"Danceability":0.5689,"Energy":0.6503,"Valence":0.4913,"Acousticness":0.2316,"Instrumentalness":0.038,"Speechiness":0.0565,"Liveness":0.1835,"Tempo":120.7284},"top_artists":{"Led Zeppelin":50,"Elton John":50,"James Blunt":38,"Pink Floyd":38,"Modest Mouse":36,"Fleetwood Mac":28,"Half Moon Run":22,"Kenny Chesney":20,"Red Hot Chili Peppers":19,"Butch Walker":18},"top_tracks":[{"Track Name":"Dreams - 2004 Remaster","Artist Name(s)":"Fleetwood Mac","Popularity":93},{"Track Name":"Yellow","Artist Name(s)":"Coldplay","Popularity":92},{"Track Name":"Locked out of Heaven","Artist Name(s)":"Bruno Mars","Popularity":92},{"Track Name":"Bring Me To Life","Artist Name(s)":"Evanescence","Popularity":91},{"Track Name":"Sorry","Artist Name(s)":"Justin Bieber","Popularity":91},{"Track Name":"Let Me Love You","Artist Name(s)":"DJ Snake;Justin Bieber","Popularity":91},{"Track Name":"The Less I Know The Better","Artist Name(s)":"Tame Impala","Popularity":91},{"Track Name":"Numb","Artist Name(s)":"Linkin Park","Popularity":90},{"Track Name":"Can't Stop","Artist Name(s)":"Red Hot Chili Peppers","Popularity":90},{"Track Name":"Highway to Hell","Artist Name(s)":"AC/DC","Popularity":89}],"top_genres":{"classic rock":228,"rock":179,"country":164,"alternative rock":79,"indie":77,"folk pop":76,"indie folk":71,"hard rock":69,"psychedelic rock":63,"soft rock":63,"art rock":58,"yacht rock":58,"rock and roll":56,"indie rock":55,"acoustic country":49},"explicit_pct":5.8,"tempo_distribution":{"110-130":622,"90-110":521,"130-150":410,"150+":298,"70-90":254,"<70":17}},"Favorites for Now":{"track_count":1464,"audio_features":{"Danceability":0.5684,"Energy":0.6489,"Valence":0.5231,"Acousticness":0.2321,"Instrumentalness":0.0353,"Speechiness":0.0526,"Liveness":0.1811,"Tempo":121.3729},"top_artists":{"Tim McGraw":47,"Rihanna":22,"Carrie Underwood":17,"John Mayer":16,"Angus & Julia Stone":16,"Jason Aldean":16,"Half Moon Run":14,"Holy Holy":14,"Drake":13,"Miranda Lambert":13},"top_tracks":[{"Track Name":"Dreams - 2004 Remaster","Artist Name(s)":"Fleetwood Mac","Popularity":93},{"Track Name":"That's What I Like","Artist Name(s)":"Bruno Mars","Popularity":92},{"Track Name":"Feel Good Inc.","Artist Name(s)":"Gorillaz;De La Soul","Popularity":91},{"Track Name":"Love Yourself","Artist Name(s)":"Justin Bieber","Popularity":90},{"Track Name":"Baby","Artist Name(s)":"Justin Bieber;Ludacris","Popularity":90},{"Track Name":"Numb","Artist Name(s)":"Linkin Park","Popularity":90},{"Track Name":"Passionfruit","Artist Name(s)":"Drake","Popularity":89},{"Track Name":"Closer","Artist Name(s)":"The Chainsmokers;Halsey","Popularity":89},{"Track Name":"Night Changes","Artist Name(s)":"One Direction","Popularity":89},{"Track Name":"Viva La Vida","Artist Name(s)":"Coldplay","Popularity":89}],"top_genres":{"country":239,"classic rock":201,"rock":99,"classic country":76,"soft rock":69,"yacht rock":66,"acoustic country":57,"indie folk":50,"hard rock":46,"aor":41,"singer-songwriter":37,"post-grunge":37,"rap":34,"indie":34,"indie rock":31},"explicit_pct":6.1,"tempo_distribution":{"110-130":442,"90-110":316,"130-150":282,"150+":222,"70-90":192,"<70":10}},"Feel Good Travel":{"track_count":907,"audio_features":{"Danceability":0.5859,"Energy":0.6627,"Valence":0.5372,"Acousticness":0.2176,"Instrumentalness":0.0388,"Speechiness":0.0543,"Liveness":0.1787,"Tempo":120.9798},"top_artists":{"Angus & Julia Stone":19,"Maroon 5":16,"Kenny Chesney":15,"Halsey":13,"Holy Holy":13,"Chris Stapleton":12,"mgk":11,"Half Moon Run":10,"Taylor Swift":10,"Death Cab for Cutie":9},"top_tracks":[{"Track Name":"Every Breath You Take","Artist Name(s)":"The Police","Popularity":94},{"Track Name":"Iris","Artist Name(s)":"The Goo Goo Dolls","Popularity":94},{"Track Name":"Mr. Brightside","Artist Name(s)":"The Killers","Popularity":93},{"Track Name":"Yellow","Artist Name(s)":"Coldplay","Popularity":92},{"Track Name":"Feel Good Inc.","Artist Name(s)":"Gorillaz;De La Soul","Popularity":91},{"Track Name":"Bring Me To Life","Artist Name(s)":"Evanescence","Popularity":91},{"Track Name":"We Are The People","Artist Name(s)":"Empire Of The Sun","Popularity":90},{"Track Name":"Blinding Lights","Artist Name(s)":"The Weeknd","Popularity":90},{"Track Name":"The Scientist","Artist Name(s)":"Coldplay","Popularity":89},{"Track Name":"Something Just Like This","Artist Name(s)":"The Chainsmokers;Coldplay","Popularity":89}],"top_genres":{"country":110,"classic rock":88,"rock":60,"soft rock":29,"yacht rock":28,"indie folk":26,"hard rock":26,"acoustic country":25,"singer-songwriter":25,"pop":24,"indie":23,"grunge":22,"classic country":22,"pop punk":21,"new wave":21},"explicit_pct":8.2,"tempo_distribution":{"110-130":279,"90-110":206,"130-150":166,"150+":135,"70-90":113,"<70":8}},"Fleetwood Mac":{"track_count":96,"audio_features":{"Danceability":0.5545,"Energy":0.5753,"Valence":0.5875,"Acousticness":0.3405,"Instrumentalness":0.0513,"Speechiness":0.0463,"Liveness":0.1548,"Tempo":117.6918},"top_artists":{"Fleetwood Mac":26,"Led Zeppelin":12,"Elton John":9,"Carole King":8,"Simon & Garfunkel":6,"Stevie Nicks":5,"Van Morrison":4,"Orleans":2,"The Doobie Brothers":2,"Van Halen":2},"top_tracks":[{"Track Name":"Dreams - 2004 Remaster","Artist Name(s)":"Fleetwood Mac","Popularity":93},{"Track Name":"Attention","Artist Name(s)":"Charlie Puth","Popularity":88},{"Track Name":"Dancing Queen","Artist Name(s)":"ABBA","Popularity":87},{"Track Name":"Landslide","Artist Name(s)":"Fleetwood Mac","Popularity":87},{"Track Name":"Your Song","Artist Name(s)":"Elton John","Popularity":81},{"Track Name":"Tiny Dancer","Artist Name(s)":"Elton John","Popularity":80},{"Track Name":"Edge of Seventeen - 2016 Remaster","Artist Name(s)":"Stevie Nicks","Popularity":78},{"Track Name":"Whole Lotta Love - 1990 Remaster","Artist Name(s)":"Led Zeppelin","Popularity":78},{"Track Name":"Mrs. Robinson - From \"The Graduate\" Soundtrack","Artist Name(s)":"Simon & Garfunkel","Popularity":76},{"Track Name":"The Boxer","Artist Name(s)":"Simon & Garfunkel","Popularity":75}],"top_genres":{"classic rock":52,"yacht rock":33,"soft rock":32,"rock":18,"hard rock":16,"folk rock":14,"rock and roll":13,"singer-songwriter":8,"folk":6,"southern rock":4,"glam metal":3,"progressive rock":2,"rockabilly":1,"quiet storm":1,"soft pop":1},"explicit_pct":0.0,"tempo_distribution":{"110-130":31,"90-110":27,"130-150":16,"150+":11,"70-90":10,"<70":1}},"Flight 04178":{"track_count":1619,"audio_features":{"Danceability":0.584,"Energy":0.6347,"Valence":0.5249,"Acousticness":0.2604,"Instrumentalness":0.0378,"Speechiness":0.0554,"Liveness":0.176,"Tempo":120.59},"top_artists":{"Angus & Julia Stone":36,"Fleetwood Mac":33,"Taylor Swift":32,"Half Moon Run":29,"John Mayer":29,"Carrie Underwood":26,"Jennifer Lopez":22,"Keith Urban":20,"Boy & Bear":18,"Rihanna":17},"top_tracks":[{"Track Name":"Iris","Artist Name(s)":"The Goo Goo Dolls","Popularity":94},{"Track Name":"Dreams - 2004 Remaster","Artist Name(s)":"Fleetwood Mac","Popularity":93},{"Track Name":"Yellow","Artist Name(s)":"Coldplay","Popularity":92},{"Track Name":"Feel Good Inc.","Artist Name(s)":"Gorillaz;De La Soul","Popularity":91},{"Track Name":"Bring Me To Life","Artist Name(s)":"Evanescence","Popularity":91},{"Track Name":"In the End","Artist Name(s)":"Linkin Park","Popularity":91},{"Track Name":"Numb","Artist Name(s)":"Linkin Park","Popularity":90},{"Track Name":"Passionfruit","Artist Name(s)":"Drake","Popularity":89},{"Track Name":"Closer","Artist Name(s)":"The Chainsmokers;Halsey","Popularity":89},{"Track Name":"Love The Way You Lie","Artist Name(s)":"Eminem;Rihanna","Popularity":89}],"top_genres":{"classic rock":196,"country":185,"yacht rock":107,"soft rock":89,"rock":77,"singer-songwriter":67,"southern rock":50,"classic country":46,"indie":41,"indie folk":39,"country rock":39,"folk rock":38,"christmas":33,"folk pop":30,"rap":30},"explicit_pct":6.1,"tempo_distribution":{"110-130":469,"90-110":401,"130-150":272,"150+":246,"70-90":222,"<70":9}},"Halloween Songs":{"track_count":50,"audio_features":{"Danceability":0.5671,"Energy":0.7161,"Valence":0.6491,"Acousticness":0.185,"Instrumentalness":0.0485,"Speechiness":0.0795,"Liveness":0.22,"Tempo":126.6904},"top_artists":{"The Rolling Stones":2,"Johnny Cash":2,"David Bowie":2,"Fleetwood Mac":2,"Bobby \"Boris\" Pickett":2,"Creedence Clearwater Revival":2,"AC/DC":2,"The Police":1,"Mazzy Star":1,"Lady Gaga":1},"top_tracks":[{"Track Name":"Highway to Hell","Artist Name(s)":"AC/DC","Popularity":89},{"Track Name":"Smack That","Artist Name(s)":"Akon;Eminem","Popularity":87},{"Track Name":"Hells Bells","Artist Name(s)":"AC/DC","Popularity":81},{"Track Name":"People Are Strange","Artist Name(s)":"The Doors","Popularity":74},{"Track Name":"Thrown Down","Artist Name(s)":"Fleetwood Mac","Popularity":70},{"Track Name":"Bark at the Moon","Artist Name(s)":"Ozzy Osbourne","Popularity":69},{"Track Name":"Runnin' Down A Dream","Artist Name(s)":"Tom Petty","Popularity":65},{"Track Name":"Evil Ways","Artist Name(s)":"Santana","Popularity":64},{"Track Name":"Season of the Witch","Artist Name(s)":"Donovan","Popularity":60},{"Track Name":"Ghostbusters - from the \"Ghostbusters\" Original Motion Picture Soundtrack","Artist Name(s)":"Ray Parker Jr.","Popularity":59}],"top_genres":{"classic rock":19,"rock":6,"hard rock":6,"soft rock":5,"yacht rock":4,"glam rock":3,"art rock":3,"psychedelic rock":3,"southern rock":3,"country rock":3,"glam metal":3,"classic country":2,"outlaw country":2,"country":2,"acid rock":2},"explicit_pct":2.0,"tempo_distribution":{"110-130":20,"90-110":11,"150+":9,"130-150":8,"<70":1,"70-90":1}},"Joyce Music":{"track_count":54,"audio_features":{"Danceability":0.5406,"Energy":0.5097,"Valence":0.4577,"Acousticness":0.4416,"Instrumentalness":0.0067,"Speechiness":0.048,"Liveness":0.1823,"Tempo":125.1692},"top_artists":{"Vince Gill":7,"Dolly Parton":3,"Alan Jackson":3,"Frank Sinatra":3,"Van Morrison":3,"Carrie Underwood":2,"Reba McEntire":2,"Ella Fitzgerald":2,"Louis Armstrong":2,"Elvis Presley":2},"top_tracks":[{"Track Name":"Ventura Highway","Artist Name(s)":"America;George Martin","Popularity":81},{"Track Name":"Stand By Me","Artist Name(s)":"Ben E. King","Popularity":81},{"Track Name":"Girl on Fire","Artist Name(s)":"Alicia Keys","Popularity":80},{"Track Name":"At Last","Artist Name(s)":"Etta James","Popularity":78},{"Track Name":"Chattahoochee","Artist Name(s)":"Alan Jackson","Popularity":76},{"Track Name":"Time Marches On","Artist Name(s)":"Tracy Lawrence","Popularity":75},{"Track Name":"Fly Me To The Moon (In Other Words)","Artist Name(s)":"Frank Sinatra;Count Basie","Popularity":74},{"Track Name":"No One","Artist Name(s)":"Alicia Keys","Popularity":74},{"Track Name":"Bless The Broken Road","Artist Name(s)":"Rascal Flatts","Popularity":73},{"Track Name":"Moondance - 2013 Remaster","Artist Name(s)":"Van Morrison","Popularity":69}],"top_genres":{"country":27,"classic country":19,"country christian":11,"traditional country":10,"christmas":7,"vocal jazz":6,"adult standards":6,"big band":6,"swing music":6,"jazz":5,"yacht rock":3,"folk rock":3,"soft rock":2,"rockabilly":2,"rock and roll":2},"explicit_pct":1.9,"tempo_distribution":{"130-150":16,"110-130":14,"150+":9,"70-90":7,"90-110":6,"<70":2}},"Jul 19 2018":{"track_count":632,"audio_features":{"Danceability":0.574,"Energy":0.6024,"Valence":0.4939,"Acousticness":0.2713,"Instrumentalness":0.0381,"Speechiness":0.0564,"Liveness":0.1619,"Tempo":120.8017},"top_artists":{"Alessia Cara":35,"Taylor Swift":21,"Dua Lipa":19,"Elton John":17,"Half Moon Run":16,"Billie Eilish":14,"Eagles":12,"John Mayer":11,"Post Malone":10,"Tom Petty and the Heartbreakers":10},"top_tracks":[{"Track Name":"Dreams - 2004 Remaster","Artist Name(s)":"Fleetwood Mac","Popularity":93},{"Track Name":"We Are The People","Artist Name(s)":"Empire Of The Sun","Popularity":90},{"Track Name":"Africa","Artist Name(s)":"TOTO","Popularity":90},{"Track Name":"Cruel Summer","Artist Name(s)":"Taylor Swift","Popularity":89},{"Track Name":"Passionfruit","Artist Name(s)":"Drake","Popularity":89},{"Track Name":"The Scientist","Artist Name(s)":"Coldplay","Popularity":89},{"Track Name":"Hotel California - 2013 Remaster","Artist Name(s)":"Eagles","Popularity":88},{"Track Name":"Sex on Fire","Artist Name(s)":"Kings of Leon","Popularity":88},{"Track Name":"Walking On A Dream","Artist Name(s)":"Empire Of The Sun","Popularity":88},{"Track Name":"Photograph","Artist Name(s)":"Ed Sheeran","Popularity":88}],"top_genres":{"classic rock":88,"country":74,"yacht rock":56,"soft rock":55,"rock":29,"pop":25,"classic country":21,"singer-songwriter":18,"acoustic country":15,"country rock":15,"soft pop":14,"southern rock":14,"aor":14,"christian":11,"ccm":11},"explicit_pct":5.4,"tempo_distribution":{"110-130":174,"90-110":151,"150+":106,"130-150":105,"70-90":92,"<70":4}},"Lo-Fi Soft Jazz Beats":{"track_count":296,"audio_features":{"Danceability":0.5696,"Energy":0.4858,"Valence":0.4156,"Acousticness":0.423,"Instrumentalness":0.0623,"Speechiness":0.0457,"Liveness":0.1536,"Tempo":117.8466},"top_artists":{"Halsey":10,"Taylor Swift":7,"Yuna":6,"BROODS":6,"The Beatles":5,"Etta James":5,"Post Malone":5,"Sasha Alex Sloan":5,"Sarah McLachlan":5,"Luke Combs":4},"top_tracks":[{"Track Name":"Yellow","Artist Name(s)":"Coldplay","Popularity":92},{"Track Name":"The Scientist","Artist Name(s)":"Coldplay","Popularity":89},{"Track Name":"Passionfruit","Artist Name(s)":"Drake","Popularity":89},{"Track Name":"Sex on Fire","Artist Name(s)":"Kings of Leon","Popularity":88},{"Track Name":"lovely (with Khalid)","Artist Name(s)":"Billie Eilish;Khalid","Popularity":88},{"Track Name":"Fix You","Artist Name(s)":"Coldplay","Popularity":87},{"Track Name":"Back In Black","Artist Name(s)":"AC/DC","Popularity":87},{"Track Name":"Circles","Artist Name(s)":"Post Malone","Popularity":87},{"Track Name":"Without Me","Artist Name(s)":"Halsey","Popularity":86},{"Track Name":"Without Me","Artist Name(s)":"Halsey","Popularity":86}],"top_genres":{"country":45,"soft rock":26,"yacht rock":22,"classic rock":20,"r&b":11,"singer-songwriter":10,"classic country":9,"soft pop":9,"folk rock":8,"jazz":8,"indie folk":8,"traditional country":7,"soul":7,"soul blues":6,"blues":6},"explicit_pct":5.7,"tempo_distribution":{"90-110":72,"110-130":72,"130-150":59,"70-90":49,"150+":38,"<70":6}},"MISC 4-22":{"track_count":1750,"audio_features":{"Danceability":0.573,"Energy":0.6373,"Valence":0.5139,"Acousticness":0.2493,"Instrumentalness":0.0408,"Speechiness":0.0534,"Liveness":0.1701,"Tempo":122.7518},"top_artists":{"Post Malone":31,"Taylor Swift":29,"Elton John":28,"Half Moon Run":19,"Death Cab for Cutie":18,"Angus & Julia Stone":17,"Maroon 5":16,"Spoon":15,"Teddy Swims":14,"Fleetwood Mac":13},"top_tracks":[{"Track Name":"BIRDS OF A FEATHER","Artist Name(s)":"Billie Eilish","Popularity":95},{"Track Name":"Iris","Artist Name(s)":"The Goo Goo Dolls","Popularity":94},{"Track Name":"Every Breath You Take","Artist Name(s)":"The Police","Popularity":94},{"Track Name":"Creep","Artist Name(s)":"Radiohead","Popularity":93},{"Track Name":"Mr. Brightside","Artist Name(s)":"The Killers","Popularity":93},{"Track Name":"Sweater Weather","Artist Name(s)":"The Neighbourhood","Popularity":93},{"Track Name":"As It Was","Artist Name(s)":"Harry Styles","Popularity":92},{"Track Name":"Sign of the Times","Artist Name(s)":"Harry Styles","Popularity":92},{"Track Name":"Die With A Smile","Artist Name(s)":"Lady Gaga;Bruno Mars","Popularity":92},{"Track Name":"Sparks","Artist Name(s)":"Coldplay","Popularity":91}],"top_genres":{"classic rock":138,"country":130,"rock":90,"yacht rock":78,"indie":58,"soft rock":57,"pop punk":56,"emo":52,"alternative rock":48,"pop":41,"indie rock":39,"post-grunge":33,"classic country":32,"new wave":32,"psychedelic rock":31},"explicit_pct":10.8,"tempo_distribution":{"110-130":498,"90-110":397,"130-150":323,"150+":310,"70-90":206,"<70":16}},"May 2021":{"track_count":629,"audio_features":{"Danceability":0.5752,"Energy":0.633,"Valence":0.5108,"Acousticness":0.2389,"Instrumentalness":0.0384,"Speechiness":0.0496,"Liveness":0.1696,"Tempo":121.5986},"top_artists":{"Half Moon Run":17,"Queen":12,"Electric Light Orchestra":10,"Taylor Swift":9,"Tom Petty and the Heartbreakers":9,"Fleetwood Mac":8,"Nothing But Thieves":8,"Chris Stapleton":8,"Daryl Hall & John Oates":7,"Ed Sheeran":7},"top_tracks":[{"Track Name":"Creep","Artist Name(s)":"Radiohead","Popularity":93},{"Track Name":"One Dance","Artist Name(s)":"Drake;Wizkid;Kyla","Popularity":92},{"Track Name":"Yellow","Artist Name(s)":"Coldplay","Popularity":92},{"Track Name":"Sorry","Artist Name(s)":"Justin Bieber","Popularity":91},{"Track Name":"Let Me Love You","Artist Name(s)":"DJ Snake;Justin Bieber","Popularity":91},{"Track Name":"Blinding Lights","Artist Name(s)":"The Weeknd","Popularity":90},{"Track Name":"Passionfruit","Artist Name(s)":"Drake","Popularity":89},{"Track Name":"Closer","Artist Name(s)":"The Chainsmokers;Halsey","Popularity":89},{"Track Name":"The Scientist","Artist Name(s)":"Coldplay","Popularity":89},{"Track Name":"Something Just Like This","Artist Name(s)":"The Chainsmokers;Coldplay","Popularity":89}],"top_genres":{"classic rock":77,"country":74,"soft rock":49,"yacht rock":43,"rock":41,"indie":28,"disco":20,"acoustic country":20,"motown":19,"indie rock":16,"soul":16,"alternative rock":15,"classic soul":15,"art rock":14,"classic country":14},"explicit_pct":8.3,"tempo_distribution":{"110-130":189,"90-110":130,"130-150":119,"150+":102,"70-90":81,"<70":8}},"Meg Jazzmellow":{"track_count":680,"audio_features":{"Danceability":0.5589,"Energy":0.554,"Valence":0.4536,"Acousticness":0.3466,"Instrumentalness":0.0768,"Speechiness":0.0459,"Liveness":0.1572,"Tempo":119.4901},"top_artists":{"Taylor Swift":13,"Angus & Julia Stone":12,"Half Moon Run":11,"George Benson":10,"Elton John":10,"Van Morrison":8,"Death Cab for Cutie":8,"Marvin Gaye":7,"David Bowie":7,"Lana Del Rey":7},"top_tracks":[{"Track Name":"Iris","Artist Name(s)":"The Goo Goo Dolls","Popularity":94},{"Track Name":"Creep","Artist Name(s)":"Radiohead","Popularity":93},{"Track Name":"Sign of the Times","Artist Name(s)":"Harry Styles","Popularity":92},{"Track Name":"Let Me Love You","Artist Name(s)":"DJ Snake;Justin Bieber","Popularity":91},{"Track Name":"Blinding Lights","Artist Name(s)":"The Weeknd","Popularity":90},{"Track Name":"Young And Beautiful","Artist Name(s)":"Lana Del Rey","Popularity":90},{"Track Name":"When I Was Your Man","Artist Name(s)":"Bruno Mars","Popularity":90},{"Track Name":"The Scientist","Artist Name(s)":"Coldplay","Popularity":89},{"Track Name":"Something Just Like This","Artist Name(s)":"The Chainsmokers;Coldplay","Popularity":89},{"Track Name":"Closer","Artist Name(s)":"The Chainsmokers;Halsey","Popularity":89}],"top_genres":{"classic rock":42,"jazz":37,"yacht rock":36,"motown":28,"classic soul":27,"smooth jazz":26,"soul":26,"soft rock":23,"country":23,"cool jazz":22,"rock":18,"indie":17,"folk pop":15,"pop punk":15,"emo":15},"explicit_pct":6.9,"tempo_distribution":{"110-130":188,"90-110":159,"130-150":112,"150+":108,"70-90":104,"<70":8}},"Meghan Jazz":{"track_count":23,"audio_features":{"Danceability":0.5686,"Energy":0.3699,"Valence":0.5199,"Acousticness":0.5692,"Instrumentalness":0.1632,"Speechiness":0.044,"Liveness":0.1398,"Tempo":115.5159},"top_artists":{"George Benson":6,"Billie Holiday":2,"Ella Fitzgerald":2,"Louis Armstrong":2,"John Coltrane":2,"Amy Winehouse":2,"The Dave Brubeck Quartet":1,"Nat King Cole":1,"Frank Sinatra":1,"Count Basie":1},"top_tracks":[{"Track Name":"Wicked Game","Artist Name(s)":"Chris Isaak","Popularity":86},{"Track Name":"At Last","Artist Name(s)":"Etta James","Popularity":78},{"Track Name":"Take Five","Artist Name(s)":"The Dave Brubeck Quartet","Popularity":71},{"Track Name":"Unforgettable","Artist Name(s)":"Nat King Cole","Popularity":71},{"Track Name":"I'll Be Seeing You","Artist Name(s)":"Billie Holiday","Popularity":70},{"Track Name":"Our Day Will Come","Artist Name(s)":"Amy Winehouse","Popularity":68},{"Track Name":"Blue Moon","Artist Name(s)":"Billie Holiday","Popularity":67},{"Track Name":"Fly Me To The Moon","Artist Name(s)":"Frank Sinatra;Count Basie","Popularity":65},{"Track Name":"Cheek To Cheek","Artist Name(s)":"Ella Fitzgerald;Louis Armstrong","Popularity":65},{"Track Name":"Breezin'","Artist Name(s)":"George Benson","Popularity":65}],"top_genres":{"jazz":11,"smooth jazz":9,"vocal jazz":8,"yacht rock":7,"jazz funk":6,"soul jazz":6,"big band":5,"swing music":5,"cool jazz":5,"christmas":5,"jazz fusion":3,"adult standards":2,"hard bop":2,"bebop":2,"jazz ballads":2},"explicit_pct":0.0,"tempo_distribution":{"90-110":7,"110-130":7,"70-90":4,"130-150":3,"150+":2,"<70":0}},"Megs Birthday 32":{"track_count":147,"audio_features":{"Danceability":0.5757,"Energy":0.6536,"Valence":0.4946,"Acousticness":0.2138,"Instrumentalness":0.0141,"Speechiness":0.0502,"Liveness":0.1768,"Tempo":124.3129},"top_artists":{"blink-182":8,"Avril Lavigne":6,"Post Malone":5,"Marvin Gaye":5,"Smash Mouth":5,"Eric Clapton":4,"Sugar Ray":4,"The Used":3,"mgk":3,"Cage The Elephant":3},"top_tracks":[{"Track Name":"BIRDS OF A FEATHER","Artist Name(s)":"Billie Eilish","Popularity":95},{"Track Name":"Creep","Artist Name(s)":"Radiohead","Popularity":93},{"Track Name":"That\u2019s So True","Artist Name(s)":"Gracie Abrams","Popularity":91},{"Track Name":"Blinding Lights","Artist Name(s)":"The Weeknd","Popularity":90},{"Track Name":"Passionfruit","Artist Name(s)":"Drake","Popularity":89},{"Track Name":"Sex on Fire","Artist Name(s)":"Kings of Leon","Popularity":88},{"Track Name":"Everywhere - 2017 Remaster","Artist Name(s)":"Fleetwood Mac","Popularity":88},{"Track Name":"Taste","Artist Name(s)":"Sabrina Carpenter","Popularity":88},{"Track Name":"lovely (with Khalid)","Artist Name(s)":"Billie Eilish;Khalid","Popularity":88},{"Track Name":"Circles","Artist Name(s)":"Post Malone","Popularity":87}],"top_genres":{"pop punk":24,"emo":23,"punk":14,"classic rock":10,"rock":9,"skate punk":8,"country":7,"screamo":6,"post-hardcore":6,"motown":5,"classic soul":5,"soul":5,"northern soul":5,"quiet storm":5,"blues":4},"explicit_pct":15.0,"tempo_distribution":{"90-110":35,"110-130":34,"150+":34,"130-150":26,"70-90":17,"<70":1}},"Merry Christmas Export":{"track_count":77,"audio_features":{"Danceability":0.526,"Energy":0.5747,"Valence":0.5495,"Acousticness":0.375,"Instrumentalness":0.0074,"Speechiness":0.056,"Liveness":0.2038,"Tempo":128.2863},"top_artists":{"Elton John":5,"Mariah Carey":4,"Ariana Grande":4,"Justin Bieber":4,"Ed Sheeran":3,"The Jackson 5":3,"Kelly Clarkson":3,"Elvis Presley":2,"Dolly Parton":2,"Michael Bubl\u00e9":2},"top_tracks":[{"Track Name":"Dust in the Wind","Artist Name(s)":"Kansas","Popularity":81},{"Track Name":"Night Moves","Artist Name(s)":"Bob Seger","Popularity":78},{"Track Name":"Last Christmas","Artist Name(s)":"Wham!","Popularity":74},{"Track Name":"Maple Syrup","Artist Name(s)":"The Backseat Lovers","Popularity":73},{"Track Name":"All I Want for Christmas Is You","Artist Name(s)":"Mariah Carey","Popularity":72},{"Track Name":"It's Not Unusual","Artist Name(s)":"Tom Jones","Popularity":72},{"Track Name":"Changes - 2015 Remaster","Artist Name(s)":"David Bowie","Popularity":71},{"Track Name":"Mistletoe","Artist Name(s)":"Justin Bieber","Popularity":70},{"Track Name":"Santa Tell Me","Artist Name(s)":"Ariana Grande","Popularity":69},{"Track Name":"Hey Joe","Artist Name(s)":"Jimi Hendrix","Popularity":69}],"top_genres":{"christmas":26,"country":8,"classic rock":7,"pop":6,"soft pop":5,"yacht rock":4,"soft rock":4,"motown":3,"rockabilly":3,"rock and roll":3,"art rock":2,"adult standards":2,"classic country":2,"neo soul":2,"glam rock":2},"explicit_pct":0.0,"tempo_distribution":{"130-150":21,"150+":18,"90-110":17,"110-130":12,"70-90":6,"<70":3}},"Mix Nov 21 2020":{"track_count":322,"audio_features":{"Danceability":0.5913,"Energy":0.6222,"Valence":0.5057,"Acousticness":0.2633,"Instrumentalness":0.037,"Speechiness":0.0549,"Liveness":0.1667,"Tempo":119.9185},"top_artists":{"Halsey":10,"Taylor Swift":9,"Huey Lewis & The News":7,"AC/DC":6,"Phoebe Ryan":6,"mgk":5,"Nothing But Thieves":5,"Sasha Alex Sloan":5,"Toby Keith":5,"Sarah McLachlan":4},"top_tracks":[{"Track Name":"Yellow","Artist Name(s)":"Coldplay","Popularity":92},{"Track Name":"Blinding Lights","Artist Name(s)":"The Weeknd","Popularity":90},{"Track Name":"The Scientist","Artist Name(s)":"Coldplay","Popularity":89},{"Track Name":"Closer","Artist Name(s)":"The Chainsmokers;Halsey","Popularity":89},{"Track Name":"Highway to Hell","Artist Name(s)":"AC/DC","Popularity":89},{"Track Name":"Fade Into You","Artist Name(s)":"Mazzy Star","Popularity":88},{"Track Name":"Everlong","Artist Name(s)":"Foo Fighters","Popularity":88},{"Track Name":"Thunderstruck","Artist Name(s)":"AC/DC","Popularity":88},{"Track Name":"Sex on Fire","Artist Name(s)":"Kings of Leon","Popularity":88},{"Track Name":"Photograph","Artist Name(s)":"Ed Sheeran","Popularity":88}],"top_genres":{"country":43,"classic rock":28,"rock":22,"classic country":15,"hard rock":13,"yacht rock":11,"rock and roll":10,"soft rock":9,"alternative rock":9,"singer-songwriter":8,"indie folk":7,"outlaw country":7,"traditional country":6,"pop country":6,"folk rock":6},"explicit_pct":8.4,"tempo_distribution":{"90-110":86,"110-130":82,"130-150":62,"150+":48,"70-90":38,"<70":6}},"Move to San Fran Jul 18":{"track_count":157,"audio_features":{"Danceability":0.5618,"Energy":0.5579,"Valence":0.4338,"Acousticness":0.3061,"Instrumentalness":0.0433,"Speechiness":0.0469,"Liveness":0.1559,"Tempo":121.3442},"top_artists":{"Death Cab for Cutie":4,"Metric":4,"Jason Aldean":4,"Angus & Julia Stone":3,"WRABEL":3,"The Japanese House":3,"Post Malone":3,"Trestal-Mery":3,"Jennifer Lopez":3,"Kelly Clarkson":2},"top_tracks":[{"Track Name":"Iris","Artist Name(s)":"The Goo Goo Dolls","Popularity":94},{"Track Name":"Sign of the Times","Artist Name(s)":"Harry Styles","Popularity":92},{"Track Name":"Yellow","Artist Name(s)":"Coldplay","Popularity":92},{"Track Name":"Kiss Me","Artist Name(s)":"Sixpence None The Richer","Popularity":87},{"Track Name":"What's Up?","Artist Name(s)":"4 Non Blondes","Popularity":86},{"Track Name":"Too Good At Goodbyes","Artist Name(s)":"Sam Smith","Popularity":83},{"Track Name":"Wherever You Will Go","Artist Name(s)":"The Calling","Popularity":82},{"Track Name":"White Iverson","Artist Name(s)":"Post Malone","Popularity":82},{"Track Name":"One Kiss (with Dua Lipa)","Artist Name(s)":"Calvin Harris;Dua Lipa","Popularity":82},{"Track Name":"I Miss You","Artist Name(s)":"blink-182","Popularity":81}],"top_genres":{"country":19,"indie folk":11,"classic rock":11,"yacht rock":9,"folk pop":6,"singer-songwriter":5,"acoustic country":5,"classic country":4,"soul":4,"indie":4,"soft rock":4,"classic soul":3,"motown":3,"soul blues":3,"indie rock":3},"explicit_pct":1.9,"tempo_distribution":{"110-130":37,"90-110":35,"150+":31,"70-90":28,"130-150":25,"<70":1}},"Music for Meg":{"track_count":1893,"audio_features":{"Danceability":0.5635,"Energy":0.6358,"Valence":0.4717,"Acousticness":0.2431,"Instrumentalness":0.0374,"Speechiness":0.0526,"Liveness":0.1736,"Tempo":120.661},"top_artists":{"Angus & Julia Stone":21,"Fleetwood Mac":19,"Modest Mouse":17,"The Beatles":17,"Metric":16,"Half Moon Run":16,"Grizfolk":15,"Boy & Bear":14,"BROODS":13,"The Paper Kites":13},"top_tracks":[{"Track Name":"Dreams - 2004 Remaster","Artist Name(s)":"Fleetwood Mac","Popularity":93},{"Track Name":"Locked out of Heaven","Artist Name(s)":"Bruno Mars","Popularity":92},{"Track Name":"Let Me Love You","Artist Name(s)":"DJ Snake;Justin Bieber","Popularity":91},{"Track Name":"The Less I Know The Better","Artist Name(s)":"Tame Impala","Popularity":91},{"Track Name":"Feel Good Inc.","Artist Name(s)":"Gorillaz;De La Soul","Popularity":91},{"Track Name":"Bring Me To Life","Artist Name(s)":"Evanescence","Popularity":91},{"Track Name":"Can't Stop","Artist Name(s)":"Red Hot Chili Peppers","Popularity":90},{"Track Name":"Numb","Artist Name(s)":"Linkin Park","Popularity":90},{"Track Name":"Perfect","Artist Name(s)":"Ed Sheeran","Popularity":90},{"Track Name":"Closer","Artist Name(s)":"The Chainsmokers;Halsey","Popularity":89}],"top_genres":{"classic rock":123,"indie folk":97,"indie":86,"folk pop":80,"country":73,"rock":73,"indie rock":56,"soft rock":55,"alternative rock":51,"pop punk":49,"yacht rock":48,"new wave":47,"emo":44,"folk rock":42,"singer-songwriter":34},"explicit_pct":5.2,"tempo_distribution":{"110-130":562,"90-110":468,"130-150":333,"150+":277,"70-90":238,"<70":13}},"New Playlist":{"track_count":251,"audio_features":{"Danceability":0.5732,"Energy":0.6655,"Valence":0.5275,"Acousticness":0.2261,"Instrumentalness":0.0434,"Speechiness":0.0461,"Liveness":0.1631,"Tempo":123.0434},"top_artists":{"Maroon 5":16,"Angus & Julia Stone":8,"Zach Bryan":8,"Death Cab for Cutie":7,"Jelly Roll":6,"Kings of Leon":5,"System Of A Down":5,"NewDad":5,"girl in red":5,"Fleetwood Mac":5},"top_tracks":[{"Track Name":"BIRDS OF A FEATHER","Artist Name(s)":"Billie Eilish","Popularity":95},{"Track Name":"Dreams - 2004 Remaster","Artist Name(s)":"Fleetwood Mac","Popularity":93},{"Track Name":"Mr. Brightside","Artist Name(s)":"The Killers","Popularity":93},{"Track Name":"Bring Me To Life","Artist Name(s)":"Evanescence","Popularity":91},{"Track Name":"Feel Good Inc.","Artist Name(s)":"Gorillaz;De La Soul","Popularity":91},{"Track Name":"Numb","Artist Name(s)":"Linkin Park","Popularity":90},{"Track Name":"Night Changes","Artist Name(s)":"One Direction","Popularity":89},{"Track Name":"Sex on Fire","Artist Name(s)":"Kings of Leon","Popularity":88},{"Track Name":"Chop Suey!","Artist Name(s)":"System Of A Down","Popularity":88},{"Track Name":"Californication","Artist Name(s)":"Red Hot Chili Peppers","Popularity":88}],"top_genres":{"country":63,"pop":19,"rock":17,"classic rock":15,"yacht rock":13,"punk":11,"pop punk":11,"emo":11,"soft rock":11,"alternative metal":9,"alternative rock":9,"classic country":9,"acoustic country":9,"indie":8,"nu metal":8},"explicit_pct":10.4,"tempo_distribution":{"110-130":75,"90-110":64,"150+":46,"130-150":40,"70-90":25,"<70":1}},"Oldies":{"track_count":176,"audio_features":{"Danceability":0.5354,"Energy":0.5302,"Valence":0.5937,"Acousticness":0.4246,"Instrumentalness":0.0161,"Speechiness":0.0458,"Liveness":0.1727,"Tempo":120.4269},"top_artists":{"Marvin Gaye":6,"Bob Dylan":6,"Simon & Garfunkel":5,"Dr. Hook":5,"Patsy Cline":4,"John Denver":4,"Seals and Crofts":4,"Creedence Clearwater Revival":4,"The Beatles":3,"The B-52's":3},"top_tracks":[{"Track Name":"Have You Ever Seen The Rain","Artist Name(s)":"Creedence Clearwater Revival","Popularity":89},{"Track Name":"The Door","Artist Name(s)":"Teddy Swims","Popularity":88},{"Track Name":"Thunderstruck","Artist Name(s)":"AC/DC","Popularity":88},{"Track Name":"Bitter Sweet Symphony - Remastered 2016","Artist Name(s)":"The Verve","Popularity":87},{"Track Name":"Ain't No Mountain High Enough","Artist Name(s)":"Marvin Gaye;Tammi Terrell","Popularity":86},{"Track Name":"Don't Dream It's Over","Artist Name(s)":"Crowded House","Popularity":85},{"Track Name":"Fortunate Son","Artist Name(s)":"Creedence Clearwater Revival","Popularity":85},{"Track Name":"Fast Car","Artist Name(s)":"Tracy Chapman","Popularity":84},{"Track Name":"Rocket Man (I Think It's Going To Be A Long, Long Time)","Artist Name(s)":"Elton John","Popularity":84},{"Track Name":"California Dreamin' - Single Version","Artist Name(s)":"The Mamas & The Papas","Popularity":82}],"top_genres":{"classic rock":29,"soul":17,"yacht rock":17,"folk":16,"motown":15,"classic soul":15,"soft rock":15,"psychedelic rock":13,"folk rock":13,"doo-wop":11,"classic country":10,"rock":10,"northern soul":9,"singer-songwriter":9,"new wave":7},"explicit_pct":0.6,"tempo_distribution":{"90-110":51,"110-130":44,"130-150":29,"150+":28,"70-90":23,"<70":1}},"Psychedelic Rock":{"track_count":31,"audio_features":{"Danceability":0.4135,"Energy":0.5787,"Valence":0.4607,"Acousticness":0.2902,"Instrumentalness":0.1284,"Speechiness":0.0611,"Liveness":0.1953,"Tempo":125.6094},"top_artists":{"The Doors":2,"The Rolling Stones":2,"Jimi Hendrix":2,"The Byrds":2,"Love":2,"Pink Floyd":2,"Iron Butterfly":1,"Cream":1,"The Moody Blues":1,"Steppenwolf":1},"top_tracks":[{"Track Name":"Howlin' for You","Artist Name(s)":"The Black Keys","Popularity":68},{"Track Name":"Purple Haze","Artist Name(s)":"Jimi Hendrix","Popularity":51},{"Track Name":"In-A-Gadda-Da-Vida - Single Version","Artist Name(s)":"Iron Butterfly","Popularity":50},{"Track Name":"You're Gonna Miss Me (2008 Remastered Original Mono LP Version)","Artist Name(s)":"13th Floor Elevators","Popularity":50},{"Track Name":"Voodoo Child (Slight Return)","Artist Name(s)":"Jimi Hendrix","Popularity":47},{"Track Name":"Shifting Sands","Artist Name(s)":"The West Coast Pop Art Experimental Band","Popularity":47},{"Track Name":"The End","Artist Name(s)":"The Doors","Popularity":46},{"Track Name":"Dark Star - Single Version","Artist Name(s)":"Grateful Dead","Popularity":40},{"Track Name":"5D (Fifth Dimension)","Artist Name(s)":"The Byrds","Popularity":25},{"Track Name":"The Thoughts Of Emerlist Davjack - 2009 Digital Remaster","Artist Name(s)":"The Nice","Popularity":18}],"top_genres":{"psychedelic rock":22,"acid rock":20,"classic rock":13,"rock":7,"blues rock":5,"progressive rock":4,"art rock":4,"baroque pop":3,"proto-punk":3,"folk rock":2,"country rock":2,"garage rock":2,"blues":1,"jam band":1,"hard rock":1},"explicit_pct":3.2,"tempo_distribution":{"110-130":8,"130-150":7,"150+":7,"70-90":6,"90-110":3,"<70":0}},"ROCK":{"track_count":576,"audio_features":{"Danceability":0.5382,"Energy":0.6409,"Valence":0.5711,"Acousticness":0.2294,"Instrumentalness":0.0629,"Speechiness":0.0488,"Liveness":0.2115,"Tempo":123.3352},"top_artists":{"Led Zeppelin":52,"Pink Floyd":31,"Eagles":25,"Fleetwood Mac":23,"John Mellencamp":22,"The Rolling Stones":17,"The Beatles":12,"Tom Petty and the Heartbreakers":11,"Queen":10,"Van Halen":8},"top_tracks":[{"Track Name":"Feel Good Inc.","Artist Name(s)":"Gorillaz;De La Soul","Popularity":91},{"Track Name":"Africa","Artist Name(s)":"TOTO","Popularity":90},{"Track Name":"Highway to Hell","Artist Name(s)":"AC/DC","Popularity":89},{"Track Name":"Hotel California - 2013 Remaster","Artist Name(s)":"Eagles","Popularity":88},{"Track Name":"Landslide","Artist Name(s)":"Fleetwood Mac","Popularity":87},{"Track Name":"Back In Black","Artist Name(s)":"AC/DC","Popularity":87},{"Track Name":"A Horse with No Name","Artist Name(s)":"America;George Martin","Popularity":86},{"Track Name":"Island In The Sun","Artist Name(s)":"Weezer","Popularity":85},{"Track Name":"Piano Man","Artist Name(s)":"Billy Joel","Popularity":85},{"Track Name":"Drops of Jupiter (Tell Me)","Artist Name(s)":"Train","Popularity":85}],"top_genres":{"classic rock":305,"rock":162,"hard rock":80,"soft rock":77,"yacht rock":67,"psychedelic rock":55,"rock and roll":55,"art rock":48,"progressive rock":39,"glam rock":22,"aor":21,"folk rock":21,"singer-songwriter":21,"southern rock":19,"blues rock":18},"explicit_pct":3.0,"tempo_distribution":{"110-130":171,"130-150":130,"90-110":121,"150+":87,"70-90":62,"<70":4}},"ROCKING VIBES":{"track_count":108,"audio_features":{"Danceability":0.5371,"Energy":0.7456,"Valence":0.5407,"Acousticness":0.1014,"Instrumentalness":0.0402,"Speechiness":0.0597,"Liveness":0.1757,"Tempo":123.7312},"top_artists":{"Metallica":4,"The Pretty Reckless":3,"AC/DC":3,"KALEO":2,"Band of Horses":2,"Jeff Beck":2,"KONGOS":2,"Boz Scaggs":2,"The Wrecks":1,"The Lumineers":1},"top_tracks":[{"Track Name":"The Scientist","Artist Name(s)":"Coldplay","Popularity":89},{"Track Name":"Under the Bridge","Artist Name(s)":"Red Hot Chili Peppers","Popularity":87},{"Track Name":"Back In Black","Artist Name(s)":"AC/DC","Popularity":87},{"Track Name":"American Idiot","Artist Name(s)":"Green Day","Popularity":85},{"Track Name":"T.N.T.","Artist Name(s)":"AC/DC","Popularity":82},{"Track Name":"Hail to the King","Artist Name(s)":"Avenged Sevenfold","Popularity":80},{"Track Name":"Are You Gonna Go My Way","Artist Name(s)":"Lenny Kravitz","Popularity":76},{"Track Name":"Barracuda","Artist Name(s)":"Heart","Popularity":75},{"Track Name":"Counting Stars","Artist Name(s)":"OneRepublic","Popularity":74},{"Track Name":"7","Artist Name(s)":"Catfish and the Bottlemen","Popularity":68}],"top_genres":{"rock":20,"classic rock":16,"hard rock":12,"indie folk":8,"blues rock":7,"folk pop":6,"indie":6,"metal":6,"glam metal":6,"southern rock":5,"alternative rock":5,"heavy metal":5,"blues":4,"folk rock":4,"indie rock":4},"explicit_pct":0.9,"tempo_distribution":{"110-130":35,"130-150":25,"90-110":20,"150+":16,"70-90":12,"<70":0}},"San Francisco Playlist":{"track_count":725,"audio_features":{"Danceability":0.5521,"Energy":0.6447,"Valence":0.507,"Acousticness":0.2326,"Instrumentalness":0.0593,"Speechiness":0.0512,"Liveness":0.1785,"Tempo":121.3696},"top_artists":{"Angus & Julia Stone":15,"Holy Holy":13,"Steve Miller Band":13,"Van Halen":11,"Paul Simon":10,"Tim McGraw":9,"Taylor Swift":9,"Johnny Cash":9,"Boy & Bear":9,"Lily Kershaw":9},"top_tracks":[{"Track Name":"Yellow","Artist Name(s)":"Coldplay","Popularity":92},{"Track Name":"The Scientist","Artist Name(s)":"Coldplay","Popularity":89},{"Track Name":"Closer","Artist Name(s)":"The Chainsmokers;Halsey","Popularity":89},{"Track Name":"Have You Ever Seen The Rain","Artist Name(s)":"Creedence Clearwater Revival","Popularity":89},{"Track Name":"Unforgettable","Artist Name(s)":"French Montana;Swae Lee","Popularity":89},{"Track Name":"Linger","Artist Name(s)":"The Cranberries","Popularity":88},{"Track Name":"Everlong","Artist Name(s)":"Foo Fighters","Popularity":88},{"Track Name":"There's Nothing Holdin' Me Back","Artist Name(s)":"Shawn Mendes","Popularity":88},{"Track Name":"Fade Into You","Artist Name(s)":"Mazzy Star","Popularity":88},{"Track Name":"Treat You Better","Artist Name(s)":"Shawn Mendes","Popularity":88}],"top_genres":{"classic rock":129,"country":69,"rock":56,"yacht rock":37,"soft rock":33,"classic country":30,"indie":28,"new wave":22,"hard rock":22,"indie folk":21,"psychedelic rock":21,"indie rock":20,"alternative rock":20,"aor":19,"post-grunge":15},"explicit_pct":4.0,"tempo_distribution":{"110-130":201,"90-110":178,"130-150":140,"150+":111,"70-90":86,"<70":9}},"Songs for My Girls":{"track_count":11,"audio_features":{"Danceability":0.604,"Energy":0.3964,"Valence":0.5337,"Acousticness":0.4259,"Instrumentalness":0.0043,"Speechiness":0.033,"Liveness":0.1436,"Tempo":108.2195},"top_artists":{"The Beatles":4,"James Taylor":3,"Carly Simon":1,"Carrie Underwood":1,"The Archies":1,"Tony Orlando & Dawn":1,"Half Moon Run":1},"top_tracks":[{"Track Name":"Blackbird - Remastered 2009","Artist Name(s)":"The Beatles","Popularity":80},{"Track Name":"Knock Three Times","Artist Name(s)":"Tony Orlando & Dawn","Popularity":60},{"Track Name":"You Can Close Your Eyes - 2019 Remaster","Artist Name(s)":"James Taylor","Popularity":56},{"Track Name":"Sugar, Sugar","Artist Name(s)":"The Archies","Popularity":54},{"Track Name":"Mockingbird","Artist Name(s)":"Carly Simon;James Taylor","Popularity":50},{"Track Name":"Need It","Artist Name(s)":"Half Moon Run","Popularity":46},{"Track Name":"Nothing But The Blood Of Jesus","Artist Name(s)":"Carrie Underwood","Popularity":25},{"Track Name":"Here Comes The Sun - Remastered","Artist Name(s)":"The Beatles","Popularity":2},{"Track Name":"You've Got a Friend","Artist Name(s)":"James Taylor","Popularity":0},{"Track Name":"All My Loving - Remastered","Artist Name(s)":"The Beatles","Popularity":0}],"top_genres":{"classic rock":4,"psychedelic rock":4,"folk rock":3,"singer-songwriter":3,"soft rock":3,"country":1},"explicit_pct":0.0,"tempo_distribution":{"110-130":5,"90-110":3,"70-90":2,"130-150":1,"<70":0,"150+":0}},"Sstarred":{"track_count":945,"audio_features":{"Danceability":0.5895,"Energy":0.6362,"Valence":0.5188,"Acousticness":0.2365,"Instrumentalness":0.0451,"Speechiness":0.0558,"Liveness":0.1782,"Tempo":121.8272},"top_artists":{"Angus & Julia Stone":42,"Fleetwood Mac":31,"Metric":17,"Maroon 5":12,"BROODS":12,"Kelly Clarkson":12,"Modest Mouse":11,"Michael Jackson":11,"U2":9,"Jennifer Lopez":9},"top_tracks":[{"Track Name":"Locked out of Heaven","Artist Name(s)":"Bruno Mars","Popularity":92},{"Track Name":"Bring Me To Life","Artist Name(s)":"Evanescence","Popularity":91},{"Track Name":"Love Yourself","Artist Name(s)":"Justin Bieber","Popularity":90},{"Track Name":"Baby","Artist Name(s)":"Justin Bieber;Ludacris","Popularity":90},{"Track Name":"Billie Jean","Artist Name(s)":"Michael Jackson","Popularity":89},{"Track Name":"Love The Way You Lie","Artist Name(s)":"Eminem;Rihanna","Popularity":89},{"Track Name":"Sex on Fire","Artist Name(s)":"Kings of Leon","Popularity":88},{"Track Name":"Landslide","Artist Name(s)":"Fleetwood Mac","Popularity":87},{"Track Name":"Pumped Up Kicks","Artist Name(s)":"Foster The People","Popularity":87},{"Track Name":"Hey Ya!","Artist Name(s)":"Outkast","Popularity":87}],"top_genres":{"classic rock":117,"yacht rock":96,"soft rock":80,"country":60,"rock":53,"indie":33,"southern rock":26,"country rock":21,"singer-songwriter":20,"classic country":20,"indie rock":19,"alternative rock":18,"new wave":17,"hard rock":17,"aor":17},"explicit_pct":5.9,"tempo_distribution":{"110-130":295,"90-110":214,"130-150":183,"150+":141,"70-90":102,"<70":10}},"cassie":{"track_count":513,"audio_features":{"Danceability":0.6108,"Energy":0.6511,"Valence":0.471,"Acousticness":0.233,"Instrumentalness":0.0165,"Speechiness":0.0723,"Liveness":0.1647,"Tempo":121.7915},"top_artists":{"Ed Sheeran":10,"Luke Bryan":8,"Keith Urban":8,"The Chainsmokers":8,"Lucius":7,"Tim McGraw":7,"Little Big Town":7,"Post Malone":6,"Halsey":6,"YBN Nahmir":6},"top_tracks":[{"Track Name":"Locked out of Heaven","Artist Name(s)":"Bruno Mars","Popularity":92},{"Track Name":"Let Me Love You","Artist Name(s)":"DJ Snake;Justin Bieber","Popularity":91},{"Track Name":"Night Changes","Artist Name(s)":"One Direction","Popularity":89},{"Track Name":"Closer","Artist Name(s)":"The Chainsmokers;Halsey","Popularity":89},{"Track Name":"Love The Way You Lie","Artist Name(s)":"Eminem;Rihanna","Popularity":89},{"Track Name":"Passionfruit","Artist Name(s)":"Drake","Popularity":89},{"Track Name":"The Scientist","Artist Name(s)":"Coldplay","Popularity":89},{"Track Name":"Yeah! (feat. Lil Jon & Ludacris)","Artist Name(s)":"USHER;Lil Jon;Ludacris","Popularity":88},{"Track Name":"Landslide","Artist Name(s)":"Fleetwood Mac","Popularity":87},{"Track Name":"Back In Black","Artist Name(s)":"AC/DC","Popularity":87}],"top_genres":{"country":73,"acoustic country":24,"soft pop":23,"rap":20,"classic country":16,"hip hop":13,"pop":12,"r&b":11,"indie folk":10,"folk pop":10,"neo soul":9,"edm":8,"classic rock":8,"soft rock":8,"soul":8},"explicit_pct":16.4,"tempo_distribution":{"110-130":153,"90-110":121,"130-150":88,"150+":83,"70-90":67,"<70":1}},"christmas (older)":{"track_count":8,"audio_features":{"Danceability":0.3911,"Energy":0.3096,"Valence":0.2391,"Acousticness":0.6712,"Instrumentalness":0.0018,"Speechiness":0.0338,"Liveness":0.1434,"Tempo":108.528},"top_artists":{"Sarah McLachlan":3,"Queen":1,"Sara Bareilles":1,"Ingrid Michaelson":1,"Johnny Cash":1,"The Carter Family":1,"Brandi Carlile":1,"The Sarah McLachlan Music Outreach Children's Choir and Youth Choir":1,"The Maine":1},"top_tracks":[{"Track Name":"Winter Song","Artist Name(s)":"Sara Bareilles;Ingrid Michaelson","Popularity":45},{"Track Name":"Happy Xmas (War Is Over) (feat. The Sarah McLachlan Music Outreach Children's Choir and Youth Choir)","Artist Name(s)":"Sarah McLachlan;The Sarah McLachlan Music Outreach Children's Choir and Youth Choir","Popularity":24},{"Track Name":"The Heartache Can Wait","Artist Name(s)":"Brandi Carlile","Popularity":22},{"Track Name":"What Child Is This? (Greensleeves)","Artist Name(s)":"Sarah McLachlan","Popularity":22},{"Track Name":"The First Noel / Mary Mary","Artist Name(s)":"Sarah McLachlan","Popularity":16},{"Track Name":"Silent Night","Artist Name(s)":"Johnny Cash;The Carter Family","Popularity":11},{"Track Name":"Thank God It's Christmas - 2011 Remaster","Artist Name(s)":"Queen","Popularity":4},{"Track Name":"Ho Ho Hopefully","Artist Name(s)":"The Maine","Popularity":0}],"top_genres":{"classic rock":1,"rock":1,"glam rock":1,"classic country":1,"outlaw country":1,"country":1,"bluegrass":1,"traditional country":1,"traditional folk":1,"country christian":1,"christian bluegrass":1,"folk":1,"americana":1,"pop punk":1},"explicit_pct":0.0,"tempo_distribution":{"70-90":3,"110-130":2,"130-150":2,"90-110":1,"<70":0,"150+":0}},"hannah":{"track_count":1734,"audio_features":{"Danceability":0.5347,"Energy":0.6318,"Valence":0.4735,"Acousticness":0.2434,"Instrumentalness":0.0654,"Speechiness":0.0506,"Liveness":0.1792,"Tempo":121.6766},"top_artists":{"Pink Floyd":46,"Led Zeppelin":41,"Fleetwood Mac":30,"The Rolling Stones":25,"The Beatles":22,"Half Moon Run":18,"Metric":17,"Angus & Julia Stone":17,"Van Halen":17,"Modest Mouse":16},"top_tracks":[{"Track Name":"Dreams - 2004 Remaster","Artist Name(s)":"Fleetwood Mac","Popularity":93},{"Track Name":"The Less I Know The Better","Artist Name(s)":"Tame Impala","Popularity":91},{"Track Name":"In the End","Artist Name(s)":"Linkin Park","Popularity":91},{"Track Name":"Feel Good Inc.","Artist Name(s)":"Gorillaz;De La Soul","Popularity":91},{"Track Name":"Bring Me To Life","Artist Name(s)":"Evanescence","Popularity":91},{"Track Name":"Numb","Artist Name(s)":"Linkin Park","Popularity":90},{"Track Name":"Closer","Artist Name(s)":"The Chainsmokers;Halsey","Popularity":89},{"Track Name":"Highway to Hell","Artist Name(s)":"AC/DC","Popularity":89},{"Track Name":"The Scientist","Artist Name(s)":"Coldplay","Popularity":89},{"Track Name":"Night Changes","Artist Name(s)":"One Direction","Popularity":89}],"top_genres":{"classic rock":351,"rock":244,"psychedelic rock":108,"hard rock":95,"indie":82,"soft rock":82,"art rock":76,"yacht rock":76,"indie folk":69,"progressive rock":69,"alternative rock":63,"folk pop":60,"indie rock":60,"pop punk":50,"country":49},"explicit_pct":4.6,"tempo_distribution":{"110-130":505,"90-110":388,"130-150":331,"150+":273,"70-90":225,"<70":11}},"jazx":{"track_count":106,"audio_features":{"Danceability":0.5875,"Energy":0.3882,"Valence":0.4841,"Acousticness":0.5725,"Instrumentalness":0.2955,"Speechiness":0.0474,"Liveness":0.1429,"Tempo":110.2545},"top_artists":{"George Benson":16,"John Coltrane":8,"Duke Ellington":6,"Louis Armstrong":5,"Ella Fitzgerald":3,"Etta James":3,"Amy Winehouse":3,"Rickie Lee Jones":3,"Earl Klugh":3,"Sweeps":3},"top_tracks":[{"Track Name":"Wicked Game","Artist Name(s)":"Chris Isaak","Popularity":86},{"Track Name":"Back To Black","Artist Name(s)":"Amy Winehouse","Popularity":83},{"Track Name":"At Last","Artist Name(s)":"Etta James","Popularity":78},{"Track Name":"In Case You Didn't Know","Artist Name(s)":"Brett Young","Popularity":76},{"Track Name":"A Sunday Kind Of Love","Artist Name(s)":"Etta James","Popularity":72},{"Track Name":"Take Five","Artist Name(s)":"The Dave Brubeck Quartet","Popularity":71},{"Track Name":"In A Sentimental Mood","Artist Name(s)":"Duke Ellington;John Coltrane","Popularity":69},{"Track Name":"Our Day Will Come","Artist Name(s)":"Amy Winehouse","Popularity":68},{"Track Name":"Blue in Green (feat. John Coltrane & Bill Evans)","Artist Name(s)":"Miles Davis;John Coltrane;Bill Evans","Popularity":67},{"Track Name":"Blue Moon","Artist Name(s)":"Billie Holiday","Popularity":67}],"top_genres":{"jazz":50,"smooth jazz":38,"cool jazz":29,"yacht rock":20,"jazz funk":18,"soul jazz":17,"big band":15,"swing music":15,"jazz ballads":15,"vocal jazz":14,"lo-fi beats":12,"jazz fusion":11,"lo-fi":11,"hard bop":10,"bebop":10},"explicit_pct":0.9,"tempo_distribution":{"90-110":40,"110-130":22,"70-90":21,"150+":11,"130-150":10,"<70":2}},"mellow":{"track_count":1184,"audio_features":{"Danceability":0.5459,"Energy":0.4937,"Valence":0.4025,"Acousticness":0.4206,"Instrumentalness":0.0537,"Speechiness":0.0426,"Liveness":0.1567,"Tempo":117.104},"top_artists":{"Taylor Swift":31,"Angus & Julia Stone":24,"Half Moon Run":19,"Noah Cyrus":15,"Billie Eilish":13,"Death Cab for Cutie":13,"John Mayer":12,"The Japanese House":12,"The Head And The Heart":12,"Chris Stapleton":12},"top_tracks":[{"Track Name":"BIRDS OF A FEATHER","Artist Name(s)":"Billie Eilish","Popularity":95},{"Track Name":"Every Breath You Take","Artist Name(s)":"The Police","Popularity":94},{"Track Name":"Iris","Artist Name(s)":"The Goo Goo Dolls","Popularity":94},{"Track Name":"Sweater Weather","Artist Name(s)":"The Neighbourhood","Popularity":93},{"Track Name":"Creep","Artist Name(s)":"Radiohead","Popularity":93},{"Track Name":"Yellow","Artist Name(s)":"Coldplay","Popularity":92},{"Track Name":"Sign of the Times","Artist Name(s)":"Harry Styles","Popularity":92},{"Track Name":"Let Me Love You","Artist Name(s)":"DJ Snake;Justin Bieber","Popularity":91},{"Track Name":"Sparks","Artist Name(s)":"Coldplay","Popularity":91},{"Track Name":"That\u2019s So True","Artist Name(s)":"Gracie Abrams","Popularity":91}],"top_genres":{"country":111,"classic rock":70,"yacht rock":69,"soft rock":67,"classic soul":35,"indie folk":34,"soft pop":32,"soul":32,"folk pop":31,"singer-songwriter":29,"folk":29,"motown":29,"classic country":28,"rock":27,"r&b":23},"explicit_pct":5.7,"tempo_distribution":{"110-130":309,"90-110":265,"70-90":227,"130-150":195,"150+":170,"<70":18}}};
+
+const PLAYLISTS = Object.keys(DATA);
+const FEATURE_COLORS = {
+  Danceability: '#c8f461', Energy: '#ff6b6b', Valence: '#ffb86b',
+  Acousticness: '#6bcfff', Instrumentalness: '#b86bff',
+  Speechiness: '#ff6bb8', Liveness: '#6bffd4'
+};
+const PALETTE = ['#c8f461','#ff6b6b','#6bcfff','#ffb86b','#b86bff','#ff6bb8','#6bffd4','#fff','#a8e6cf','#ffd3a5'];
+
+// Compute global stats
+function computeGlobal() {
+  const artistCounts = {};
+  const genreCounts = {};
+  PLAYLISTS.forEach(pl => {
+    Object.entries(DATA[pl].top_artists).forEach(([a, n]) => { artistCounts[a] = (artistCounts[a]||0) + n; });
+    Object.entries(DATA[pl].top_genres).forEach(([g, n]) => { genreCounts[g] = (genreCounts[g]||0) + n; });
+  });
+  const topArtist = Object.entries(artistCounts).sort((a,b)=>b[1]-a[1])[0];
+  const topGenre = Object.entries(genreCounts).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('top-artist-name').textContent = topArtist ? topArtist[0].split(' ').slice(0,2).join(' ') : '—';
+  document.getElementById('top-genre-name').textContent = topGenre ? topGenre[0] : '—';
+}
+
+// TABS
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// OVERVIEW
+function buildOverview() {
+  const grid = document.getElementById('overview-grid');
+  const features = ['Energy','Danceability','Valence','Acousticness'];
+  PLAYLISTS.forEach(pl => {
+    const d = DATA[pl];
+    const card = document.createElement('div');
+    card.className = 'overview-card';
+    const topGenreEntry = Object.entries(d.top_genres).sort((a,b)=>b[1]-a[1])[0];
+    card.innerHTML = `
+      <div class="oc-name">${pl}</div>
+      <div class="oc-meta">
+        <span>${d.track_count} tracks</span>
+        ${topGenreEntry ? `<span>${topGenreEntry[0]}</span>` : ''}
+        <span>~${Math.round(d.audio_features.Tempo)} BPM</span>
+        ${d.explicit_pct > 0 ? `<span class="explicit-badge">E ${d.explicit_pct}%</span>` : ''}
+      </div>
+      <div class="oc-bars">
+        ${features.map(f => `
+          <div class="oc-bar-row">
+            <div class="oc-bar-label">${f.slice(0,6)}</div>
+            <div class="oc-bar-track">
+              <div class="oc-bar-fill" style="width:${(d.audio_features[f]*100).toFixed(1)}%;background:${FEATURE_COLORS[f]};"></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    card.addEventListener('click', () => {
+      document.querySelector('.tab[data-tab="features"]').click();
+      // select just this playlist
+      featSelected.clear();
+      featSelected.add(pl);
+      renderFeatChips();
+      renderFeatures();
+    });
+    grid.appendChild(card);
+  });
+}
+
+// FEATURE BARS SECTION
+const featSelected = new Set();
+function buildFeatChips() {
+  const grid = document.getElementById('feat-playlist-grid');
+  PLAYLISTS.forEach(pl => {
+    const chip = document.createElement('button');
+    chip.className = 'pl-chip';
+    chip.dataset.pl = pl;
+    chip.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;">${pl}</span><span class="track-count">${DATA[pl].track_count}</span>`;
+    chip.addEventListener('click', () => {
+      if (featSelected.has(pl)) featSelected.delete(pl);
+      else featSelected.add(pl);
+      renderFeatChips();
+      renderFeatures();
+    });
+    grid.appendChild(chip);
+  });
+}
+function renderFeatChips() {
+  document.querySelectorAll('#feat-playlist-grid .pl-chip').forEach(c => {
+    c.classList.toggle('selected', featSelected.has(c.dataset.pl));
+  });
+  document.getElementById('feat-count').textContent = `${featSelected.size} playlist${featSelected.size !== 1 ? 's' : ''} selected`;
+}
+document.getElementById('feat-select-all').addEventListener('click', () => { PLAYLISTS.forEach(p => featSelected.add(p)); renderFeatChips(); renderFeatures(); });
+document.getElementById('feat-clear').addEventListener('click', () => { featSelected.clear(); renderFeatChips(); renderFeatures(); });
+
+function renderFeatures() {
+  const el = document.getElementById('feat-content');
+  const selected = [...featSelected];
+  if (selected.length === 0) { el.innerHTML = '<div class="empty-state">Select playlists above to see their audio features</div>'; return; }
+  
+  const features = ['Danceability','Energy','Valence','Acousticness','Instrumentalness','Speechiness','Liveness'];
+  
+  el.innerHTML = `<div class="features-grid">
+    <div class="card">
+      <div class="card-title">Feature comparison</div>
+      <div class="feature-bars" id="feat-bars"></div>
+    </div>
+    <div class="card chart-wrap" style="height:360px;">
+      <div class="card-title">Radar view</div>
+      <canvas id="feat-radar"></canvas>
+    </div>
+  </div>
+  <div class="card" style="margin-top:1.5rem;">
+    <div class="card-title">Tempo distribution</div>
+    <canvas id="tempo-chart" style="max-height:220px;"></canvas>
+  </div>`;
+
+  // Feature bars
+  const barsEl = document.getElementById('feat-bars');
+  features.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'feature-row';
+    const vals = selected.map(pl => ({ pl, v: DATA[pl].audio_features[f] }));
+    row.innerHTML = `
+      <div class="feature-label-row">
+        <span class="feature-name">${f}</span>
+        <span class="feature-vals">${vals.map((v,i) => `<span class="fval"><span class="dot" style="background:${PALETTE[i % PALETTE.length]}"></span>${v.pl.slice(0,10)}… ${(v.v).toFixed(2)}</span>`).join('')}</span>
+      </div>
+      ${vals.map((v,i) => `<div class="feature-bar-track" style="margin-bottom:2px;"><div class="feature-bar-fill" style="width:${(v.v*100).toFixed(1)}%;background:${PALETTE[i%PALETTE.length]};opacity:0.85;"></div></div>`).join('')}
+    `;
+    barsEl.appendChild(row);
+  });
+
+  // Radar
+  const radarCtx = document.getElementById('feat-radar').getContext('2d');
+  new Chart(radarCtx, {
+    type: 'radar',
+    data: {
+      labels: features,
+      datasets: selected.map((pl, i) => ({
+        label: pl,
+        data: features.map(f => DATA[pl].audio_features[f]),
+        borderColor: PALETTE[i % PALETTE.length],
+        backgroundColor: PALETTE[i % PALETTE.length] + '22',
+        pointBackgroundColor: PALETTE[i % PALETTE.length],
+        borderWidth: 2
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      scales: { r: { min: 0, max: 1, ticks: { display: false }, grid: { color: '#2a2a2a' }, angleLines: { color: '#2a2a2a' }, pointLabels: { color: '#888', font: { size: 11, family: 'DM Mono' } } } },
+      plugins: { legend: { labels: { color: '#888', font: { size: 10 }, boxWidth: 12 } } }
+    }
+  });
+
+  // Tempo bars
+  const tempoLabels = ['<70','70-90','90-110','110-130','130-150','150+'];
+  const tempoCtx = document.getElementById('tempo-chart').getContext('2d');
+  new Chart(tempoCtx, {
+    type: 'bar',
+    data: {
+      labels: tempoLabels,
+      datasets: selected.map((pl, i) => ({
+        label: pl,
+        data: tempoLabels.map(l => DATA[pl].tempo_distribution[l] || 0),
+        backgroundColor: PALETTE[i % PALETTE.length] + 'cc',
+        borderColor: PALETTE[i % PALETTE.length],
+        borderWidth: 1
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { labels: { color: '#888', font: { size: 10 }, boxWidth: 12 } } },
+      scales: {
+        x: { grid: { color: '#2a2a2a' }, ticks: { color: '#777', font: { family: 'DM Mono', size: 10 } } },
+        y: { grid: { color: '#1e1e1e' }, ticks: { color: '#777', font: { family: 'DM Mono', size: 10 } } }
+      }
+    }
+  });
+}
+
+// GENRES SECTION
+const genreSelected = new Set();
+let genreChartInst = null;
+function buildGenreChips() {
+  const grid = document.getElementById('genre-playlist-grid');
+  PLAYLISTS.forEach(pl => {
+    const chip = document.createElement('button');
+    chip.className = 'pl-chip';
+    chip.dataset.pl = pl;
+    chip.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;">${pl}</span><span class="track-count">${DATA[pl].track_count}</span>`;
+    chip.addEventListener('click', () => {
+      if (genreSelected.has(pl)) genreSelected.delete(pl);
+      else genreSelected.add(pl);
+      renderGenreChips();
+      renderGenres();
+    });
+    grid.appendChild(chip);
+  });
+}
+function renderGenreChips() {
+  document.querySelectorAll('#genre-playlist-grid .pl-chip').forEach(c => c.classList.toggle('selected', genreSelected.has(c.dataset.pl)));
+  document.getElementById('genre-count').textContent = `${genreSelected.size} selected`;
+}
+document.getElementById('genre-select-all').addEventListener('click', () => { PLAYLISTS.forEach(p => genreSelected.add(p)); renderGenreChips(); renderGenres(); });
+document.getElementById('genre-clear').addEventListener('click', () => { genreSelected.clear(); renderGenreChips(); renderGenres(); });
+
+function renderGenres() {
+  const selected = [...genreSelected];
+  const globalList = document.getElementById('global-genre-list');
+  const compareGrid = document.getElementById('genre-compare-grid');
+
+  if (selected.length === 0) {
+    globalList.innerHTML = '<div class="empty-state">Select playlists above</div>';
+    compareGrid.innerHTML = '';
+    return;
+  }
+
+  // Aggregate
+  const combined = {};
+  selected.forEach(pl => Object.entries(DATA[pl].top_genres).forEach(([g, n]) => { combined[g] = (combined[g]||0) + n; }));
+  const sorted = Object.entries(combined).sort((a,b) => b[1]-a[1]).slice(0, 15);
+  const max = sorted[0]?.[1] || 1;
+
+  globalList.innerHTML = sorted.map(([g,n], i) => `
+    <div class="genre-row">
+      <div class="genre-name">${g}</div>
+      <div class="genre-bar-wrap"><div class="genre-bar" style="width:${(n/max*100).toFixed(1)}%;background:${PALETTE[i%PALETTE.length]};"></div></div>
+      <div class="genre-count">${n}</div>
+    </div>
+  `).join('');
+
+  // Pie chart
+  const canvas = document.getElementById('genre-chart');
+  if (genreChartInst) { genreChartInst.destroy(); genreChartInst = null; }
+  genreChartInst = new Chart(canvas.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: sorted.slice(0,10).map(([g]) => g),
+      datasets: [{ data: sorted.slice(0,10).map(([,n]) => n), backgroundColor: PALETTE.slice(0,10).map(c => c+'cc'), borderColor: '#161616', borderWidth: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { color: '#888', font: { size: 10 }, boxWidth: 12, padding: 8 } } }
+    }
+  });
+
+  // Per-playlist cards
+  compareGrid.innerHTML = '';
+  selected.forEach(pl => {
+    const g = Object.entries(DATA[pl].top_genres).sort((a,b)=>b[1]-a[1]).slice(0, 10);
+    const mx = g[0]?.[1] || 1;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="pl-card-header">
+        <div class="pl-card-name">${pl}</div>
+        <div class="pl-card-tracks">${DATA[pl].track_count} tracks</div>
+      </div>
+      <div class="genre-list">
+        ${g.map(([genre, n], i) => `
+          <div class="genre-row">
+            <div class="genre-name">${genre}</div>
+            <div class="genre-bar-wrap"><div class="genre-bar" style="width:${(n/mx*100).toFixed(1)}%;background:${PALETTE[i%PALETTE.length]};"></div></div>
+            <div class="genre-count">${n}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    compareGrid.appendChild(card);
+  });
+}
+
+// ARTISTS SECTION
+const artistSelected = new Set();
+function buildArtistChips() {
+  const grid = document.getElementById('artist-playlist-grid');
+  PLAYLISTS.forEach(pl => {
+    const chip = document.createElement('button');
+    chip.className = 'pl-chip';
+    chip.dataset.pl = pl;
+    chip.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;">${pl}</span><span class="track-count">${DATA[pl].track_count}</span>`;
+    chip.addEventListener('click', () => {
+      if (artistSelected.has(pl)) artistSelected.delete(pl);
+      else artistSelected.add(pl);
+      renderArtistChips();
+      renderArtists();
+    });
+    grid.appendChild(chip);
+  });
+}
+function renderArtistChips() {
+  document.querySelectorAll('#artist-playlist-grid .pl-chip').forEach(c => c.classList.toggle('selected', artistSelected.has(c.dataset.pl)));
+  document.getElementById('artist-count').textContent = `${artistSelected.size} selected`;
+}
+document.getElementById('artist-select-all').addEventListener('click', () => { PLAYLISTS.forEach(p => artistSelected.add(p)); renderArtistChips(); renderArtists(); });
+document.getElementById('artist-clear').addEventListener('click', () => { artistSelected.clear(); renderArtistChips(); renderArtists(); });
+
+function renderArtists() {
+  const selected = [...artistSelected];
+  const globalList = document.getElementById('global-artist-list');
+  const compareGrid = document.getElementById('artists-compare-grid');
+  if (selected.length === 0) { globalList.innerHTML = '<div class="empty-state">Select playlists above</div>'; compareGrid.innerHTML = ''; return; }
+  const combined = {};
+  selected.forEach(pl => Object.entries(DATA[pl].top_artists).forEach(([a,n]) => { combined[a] = (combined[a]||0) + n; }));
+  const sorted = Object.entries(combined).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  globalList.innerHTML = `<div class="artist-list">${sorted.map(([a,n],i) => `<div class="artist-row"><span class="artist-rank">${(i+1).toString().padStart(2,'0')}</span><span class="artist-name">${a}</span><span class="artist-count">${n} tracks</span></div>`).join('')}</div>`;
+  compareGrid.innerHTML = '';
+  selected.forEach(pl => {
+    const artists = Object.entries(DATA[pl].top_artists).sort((a,b)=>b[1]-a[1]);
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<div class="pl-card-header"><div class="pl-card-name">${pl}</div><div class="pl-card-tracks">${DATA[pl].track_count} tracks</div></div>
+      <div class="artist-list">${artists.map(([a,n],i)=>`<div class="artist-row"><span class="artist-rank">${(i+1).toString().padStart(2,'0')}</span><span class="artist-name">${a}</span><span class="artist-count">${n}</span></div>`).join('')}</div>`;
+    compareGrid.appendChild(card);
+  });
+}
+
+// TRACKS SECTION
+const trackSelected = new Set();
+function buildTrackChips() {
+  const grid = document.getElementById('track-playlist-grid');
+  PLAYLISTS.forEach(pl => {
+    const chip = document.createElement('button');
+    chip.className = 'pl-chip';
+    chip.dataset.pl = pl;
+    chip.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;">${pl}</span><span class="track-count">${DATA[pl].track_count}</span>`;
+    chip.addEventListener('click', () => {
+      if (trackSelected.has(pl)) trackSelected.delete(pl);
+      else trackSelected.add(pl);
+      renderTrackChips();
+      renderTracks();
+    });
+    grid.appendChild(chip);
+  });
+}
+function renderTrackChips() {
+  document.querySelectorAll('#track-playlist-grid .pl-chip').forEach(c => c.classList.toggle('selected', trackSelected.has(c.dataset.pl)));
+  document.getElementById('track-count').textContent = `${trackSelected.size} selected`;
+}
+document.getElementById('track-select-all').addEventListener('click', () => { PLAYLISTS.forEach(p => trackSelected.add(p)); renderTrackChips(); renderTracks(); });
+document.getElementById('track-clear').addEventListener('click', () => { trackSelected.clear(); renderTrackChips(); renderTracks(); });
+
+function renderTracks() {
+  const selected = [...trackSelected];
+  const grid = document.getElementById('tracks-compare-grid');
+  if (selected.length === 0) { grid.innerHTML = '<div class="empty-state">Select playlists above</div>'; return; }
+  grid.innerHTML = '';
+  selected.forEach(pl => {
+    const tracks = DATA[pl].top_tracks;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<div class="pl-card-header"><div class="pl-card-name">${pl}</div><div class="pl-card-tracks">${DATA[pl].track_count} tracks</div></div>
+      <div class="track-list">${tracks.map((t,i)=>`<div class="track-row">
+        <div class="track-name">${i+1}. ${t['Track Name']}</div>
+        <div class="track-artist">${t['Artist Name(s)'].replace(/;/g,', ')}</div>
+        <div class="track-pop">popularity ${t['Popularity']}</div>
+      </div>`).join('')}</div>`;
+    grid.appendChild(card);
+  });
+}
+
+// COMPARE SECTION
+const cmpSelected = new Set();
+let cmpChartInst = null;
+function buildCmpChips() {
+  const grid = document.getElementById('cmp-playlist-grid');
+  PLAYLISTS.forEach(pl => {
+    const chip = document.createElement('button');
+    chip.className = 'pl-chip';
+    chip.dataset.pl = pl;
+    chip.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;">${pl}</span><span class="track-count">${DATA[pl].track_count}</span>`;
+    chip.addEventListener('click', () => {
+      if (cmpSelected.has(pl)) cmpSelected.delete(pl);
+      else if (cmpSelected.size < 6) cmpSelected.add(pl);
+      renderCmpChips();
+      renderCompare();
+    });
+    grid.appendChild(chip);
+  });
+}
+function renderCmpChips() {
+  document.querySelectorAll('#cmp-playlist-grid .pl-chip').forEach(c => c.classList.toggle('selected', cmpSelected.has(c.dataset.pl)));
+  document.getElementById('cmp-count').textContent = `${cmpSelected.size}/6 selected`;
+}
+document.getElementById('cmp-clear').addEventListener('click', () => { cmpSelected.clear(); renderCmpChips(); renderCompare(); });
+
+function renderCompare() {
+  const el = document.getElementById('cmp-content');
+  const selected = [...cmpSelected];
+  if (selected.length < 2) { el.innerHTML = '<div class="empty-state">Select 2–6 playlists to compare them side by side</div>'; return; }
+
+  const features = ['Danceability','Energy','Valence','Acousticness','Instrumentalness','Speechiness','Liveness'];
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div class="card-title">Audio features — side by side</div>
+      <canvas id="cmp-chart" style="max-height:300px;"></canvas>
+    </div>
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div class="card-title">Feature breakdown</div>
+      <div class="feature-bars" id="cmp-bars"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">
+      ${selected.map((pl,i) => `
+        <div class="card">
+          <div class="pl-card-header">
+            <div class="pl-card-name" style="border-left:3px solid ${PALETTE[i]};padding-left:0.5rem;">${pl}</div>
+          </div>
+          <div class="oc-meta" style="margin-bottom:0.75rem;font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);display:flex;gap:0.75rem;flex-wrap:wrap;">
+            <span>${DATA[pl].track_count} tracks</span>
+            <span>~${Math.round(DATA[pl].audio_features.Tempo)} BPM</span>
+            ${DATA[pl].explicit_pct > 0 ? `<span class="explicit-badge">E ${DATA[pl].explicit_pct}%</span>` : ''}
+          </div>
+          <div style="font-size:0.75rem;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:0.4rem;">TOP GENRES</div>
+          <div>${Object.entries(DATA[pl].top_genres).slice(0,5).map(([g])=>`<span style="font-size:0.75rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:0.15rem 0.4rem;margin:0.1rem;display:inline-block;color:var(--text);">${g}</span>`).join('')}</div>
+          <div style="font-size:0.75rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:0.75rem;margin-bottom:0.4rem;">TOP ARTISTS</div>
+          <div>${Object.keys(DATA[pl].top_artists).slice(0,5).map(a=>`<div style="font-size:0.8rem;padding:0.15rem 0;color:var(--text);">${a}</div>`).join('')}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  // Grouped bar chart
+  if (cmpChartInst) { cmpChartInst.destroy(); cmpChartInst = null; }
+  const ctx = document.getElementById('cmp-chart').getContext('2d');
+  cmpChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: features,
+      datasets: selected.map((pl, i) => ({
+        label: pl.length > 18 ? pl.slice(0,18)+'…' : pl,
+        data: features.map(f => DATA[pl].audio_features[f]),
+        backgroundColor: PALETTE[i % PALETTE.length] + 'bb',
+        borderColor: PALETTE[i % PALETTE.length],
+        borderWidth: 1
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { labels: { color: '#888', font: { size: 10 }, boxWidth: 12 } } },
+      scales: {
+        x: { grid: { color: '#1e1e1e' }, ticks: { color: '#777', font: { family: 'DM Mono', size: 10 } } },
+        y: { min: 0, max: 1, grid: { color: '#1e1e1e' }, ticks: { color: '#777', font: { family: 'DM Mono', size: 10 } } }
+      }
+    }
+  });
+
+  // Feature bar rows
+  const barsEl = document.getElementById('cmp-bars');
+  features.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'feature-row';
+    row.innerHTML = `
+      <div class="feature-label-row">
+        <span class="feature-name">${f}</span>
+        <span class="feature-vals">${selected.map((pl,i)=>`<span class="fval"><span class="dot" style="background:${PALETTE[i%PALETTE.length]}"></span>${(DATA[pl].audio_features[f]).toFixed(2)}</span>`).join('')}</span>
+      </div>
+      ${selected.map((pl,i)=>`<div class="feature-bar-track" style="margin-bottom:2px;"><div class="feature-bar-fill" style="width:${(DATA[pl].audio_features[f]*100).toFixed(1)}%;background:${PALETTE[i%PALETTE.length]};opacity:0.85;"></div></div>`).join('')}
+    `;
+    barsEl.appendChild(row);
+  });
+}
+
+// INIT
+computeGlobal();
+buildOverview();
+buildFeatChips();
+buildGenreChips();
+buildArtistChips();
+buildTrackChips();
+buildCmpChips();
+</script>
+</body>
+</html>
